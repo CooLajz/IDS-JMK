@@ -99,7 +99,20 @@ class Realtime:
             origin + stops[0]["departure"] - 1800 <= now <= origin + stops[-1]["arrival"] + 7200
         ):
             return []
-        return self.vehicle_list(trip_id, stops, day, now=now)
+        vehicles = self.vehicle_list(trip_id, stops, day, now=now)
+        for vehicle in vehicles:
+            current = vehicle["current_stop"]
+            if current is None:
+                continue
+            current.update(delay_seconds=None, delay_source=None)
+            if current["status"] == "before_departure":
+                continue
+            row = next(s for s in stops if s["seq"] == current["stop_sequence"])
+            estimate = self.estimate(row, day, origin, stops, now)
+            current.update(
+                delay_seconds=estimate.get("delay_seconds"), delay_source=estimate.get("source")
+            )
+        return vehicles
 
     @staticmethod
     def current_stop(vehicle, stops, service_date=None, now=None):

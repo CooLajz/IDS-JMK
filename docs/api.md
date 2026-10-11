@@ -66,3 +66,5 @@ Seznam zastávek v detailu má vlastní posouvání. Při otevření a změně z
 Volba **Sledovat vozidlo** je při otevření detailu vypnutá. Po zapnutí se mapa vystředí na vozidlo a při každé aktualizaci následuje jeho čerstvou polohu bez změny přiblížení. Po vypnutí zůstává ruční poloha mapy zachována.
 
 V detailu konkrétního provozního dne může `current_stop.status` mít hodnotu `before_departure`: před plánovaným začátkem jízdy je čerstvá poloha do 100 m od výchozí zastávky a realtime odkazuje na první nebo druhou zastávku. V tom případě se označí výchozí zastávka s `source: schedule_and_position` a popiskem „Před plánovaným odjezdem“. Jde o kombinaci plánu a polohy, nikoli potvrzení, že vozidlo stojí. Ostatní stavy mají `source: realtime`.
+
+V detailu spoje obsahuje `current_stop` také `delay_seconds` a `delay_source` (`vehicle_estimate`, `trip_update` nebo `null`). Odhad se počítá pro tuto konkrétní zastávku stejným postupem jako v odjezdové tabuli. Bez podkladů nebo před plánovaným začátkem jízdy zůstane neznámý. Web uvádí nenulové zpoždění u zvýrazněné zastávky; chybějící odhad ani nulu nezobrazuje.

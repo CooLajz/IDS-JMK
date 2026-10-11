@@ -399,9 +399,10 @@ async function updateTrip() {
     if (seq !== tripSequence || !$("detail").open) return;
     $("detail-features").replaceChildren(vehicleFeatures(trip));
     const vehicles = trip.vehicles.filter((v) => !v.stale && v.position);
-    const stopStatus = (s) => vehicles.find((v) =>
+    const stopProgress = (s) => vehicles.find((v) =>
       v.current_stop?.stop_sequence === s.seq && v.current_stop.stop_id === s.stop_id,
-    )?.current_stop.status;
+    )?.current_stop;
+    const stopStatus = (s) => stopProgress(s)?.status;
     const stopLabel = (status) => ({
       in_transit_to: "Následující zastávka",
       incoming_at: "Přijíždí do zastávky",
@@ -423,7 +424,14 @@ async function updateTrip() {
         li.dataset.stopKey = `${s.stop_id}/${s.seq}`;
         li.classList.add("vehicle-stop");
         const badge = document.createElement("small");
-        badge.textContent = label;
+        const progress = stopProgress(s);
+        const delay = Number.isFinite(progress.delay_seconds)
+          ? Math.round(progress.delay_seconds / 60)
+          : 0;
+        const delayLabel = delay !== 0
+          ? `${progress.delay_source === "vehicle_estimate" ? "odhad" : "zpoždění"} ${delay > 0 ? "+" : ""}${delay} min`
+          : "";
+        badge.textContent = [label, delayLabel].filter(Boolean).join(" · ");
         li.append(badge);
       }
       $("trip-stops").append(li);

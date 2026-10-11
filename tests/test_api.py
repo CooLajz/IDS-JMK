@@ -473,9 +473,10 @@ def test_vehicle_reports_unique_stop_without_sequence(timetable, status, label):
     rt.snapshot.vehicles[("T", "")]["sequence"] = None
     stops = timetable.trip("T", now.date())["stops"]
     vehicle = rt.trip_vehicles("T", stops, now.date(), now.timestamp())[0]
-    assert vehicle["current_stop"] == {
-        "stop_id": "B", "stop_sequence": 2, "status": label, "source": "realtime"
-    }
+    current = vehicle["current_stop"]
+    assert (current["stop_id"], current["stop_sequence"], current["status"], current["source"]) == (
+        "B", 2, label, "realtime"
+    )
 
 
 @pytest.mark.parametrize("case", ["repeated", "conflicting", "missing", "stale", "no_position"])
@@ -535,3 +536,14 @@ def test_vehicle_before_planned_start(timetable, case, expected):
     if expected == "before_departure":
         assert current["stop_id"] == "A"
         assert current["source"] == "schedule_and_position"
+
+
+def test_trip_current_stop_includes_its_own_delay(timetable):
+    now = at("2026-10-11T14:13:00")
+    rt = Realtime()
+    rt.snapshot = vehicle_rt(now, stop="B")
+    rt.snapshot.vehicles[("T", "")].update(sequence=2, position={"lat": 49.01, "lon": 16.01})
+    stops = timetable.trip("T", now.date())["stops"]
+    current = rt.trip_vehicles("T", stops, now.date(), now.timestamp())[0]["current_stop"]
+    assert current["delay_seconds"] == 180
+    assert current["delay_source"] == "vehicle_estimate"
