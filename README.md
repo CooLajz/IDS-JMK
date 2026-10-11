@@ -53,7 +53,7 @@ V prostředí Stacku nastavte `BIND_IP` na konkrétní interní IP Docker server
 
 Příklad proměnných je v [.env.example](.env.example). Datový svazek `ids-data` uchovává jízdní řády a identitu serveru. Nemažte jej při aktualizaci. Nasazujte pouze jednu instanci API nad jedním svazkem a jeden proces Uvicornu; plánovač i realtime snapshot žijí v této instanci.
 
-Služba v této verzi nemá vlastní přihlášení. Pro provoz mimo důvěryhodnou síť ji umísti za odpovídajícím zabezpečením reverzní proxy. Prohlížeč používá API stejného původu, takže není potřeba povolovat plošné CORS.
+Služba v této verzi nemá vlastní přihlášení. Pro provoz mimo důvěryhodnou síť ji umístěte za odpovídajícím zabezpečením reverzní proxy. Prohlížeč používá API stejného původu, takže není potřeba povolovat plošné CORS.
 
 ### Použití interní sítě reverse proxy
 
@@ -74,10 +74,12 @@ docker compose -f compose.proxy.yaml -f compose.build.yaml up -d --build
 | `DATA_DIR` | `data` (v obrazu `/data`) | Persistentní data |
 | `GTFS_URL` | Přímá adresa KORDIS níže | Zdroj jízdních řádů |
 | `REALTIME_URL` | Přímá adresa KORDIS níže | Zdroj realtime |
-| `GTFS_INTERVAL_SECONDS` | `3600` | Kontrola jízdních řádů, minimum 3600 s |
-| `REALTIME_INTERVAL_SECONDS` | `30` | Kontrola realtime, minimum 15 s |
+| `GTFS_INTERVAL_SECONDS` | `86400` | Kontrola jízdních řádů každých 24 hodin, minimum 3600 s |
+| `REALTIME_INTERVAL_SECONDS` | `60` | Kontrola realtime každých 60 sekund, minimum 15 s |
 | `REALTIME_MAX_AGE_SECONDS` | `180` | Maximální stáří použitelných realtime zpráv |
 | `DOWNLOAD_ENABLED` | `true` | `false` vypne stahování pro izolované testy |
+
+Intervaly můžete změnit v Portaineru v části **Environment variables** daného Stacku pomocí `GTFS_INTERVAL_SECONDS` a `REALTIME_INTERVAL_SECONDS` (hodnoty v sekundách). Pokud proměnné neuvedete, použije se 86400 a 60 sekund. Po změně znovu nasaďte Stack. Při startu se oba zdroje načtou ihned; interval určuje prodlevu mezi dokončením obnovy a dalším stažením. Po neúspěšném stažení GTFS se pokus opakuje za 60 sekund. Obnova webové tabule a HA integrace z API zůstává každých 30 sekund.
 
 Stejný obsah GTFS se znovu neimportuje. Nový archiv se zkontroluje a importuje do oddělené databáze, která pak atomicky nahradí původní. Při chybě zůstává poslední funkční jízdní řád. Realtime snapshot se pravidelně nahrazuje, nepersistuje se přes restart.
 
