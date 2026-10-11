@@ -22,10 +22,21 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: web/package-lock.json
+      - run: node --test tests/ha_card.test.mjs
       - run: npm ci && npm run build
         working-directory: web
       - run: docker compose -f compose.web.yaml -f compose.build.yaml config --quiet
       - run: docker compose -f compose.proxy.yaml -f compose.build.yaml config --quiet
+  home-assistant:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.13'
+      - run: uv venv /tmp/ha-tests
+      - run: uv pip install --python /tmp/ha-tests/bin/python homeassistant==2025.12.5 pytest
+      - run: /tmp/ha-tests/bin/python -m pytest tests/test_ha_config_flow.py -q
   hassfest:
     runs-on: ubuntu-latest
     steps:

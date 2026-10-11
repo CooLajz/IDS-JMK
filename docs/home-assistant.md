@@ -17,7 +17,34 @@ V **Nastavení → Zařízení a služby → Přidat integraci → IDS JMK**:
 
 Vznikne jeden senzor. Jeho stav je počet minut do nejbližšího nezrušeného odjezdu. Atribut `departures` obsahuje celou tabulku. Při výpadku API se senzor označí jako nedostupný. Další tabuli přidejte opakováním průvodce; počet řádků lze měnit v možnostech integrace.
 
-## Dashboard s flex-table-card
+## Vlastní karta IDS JMK
+
+Aktuální zdrojová verze integrace obsahuje vlastní kartu **IDS JMK — Odjezdová tabule**. Není potřeba instalovat `flex-table-card`, kopírovat JavaScript ani přidávat zdroj dashboardu. Karta se načte automaticky z Home Assistantu; sama neposílá další požadavky na IDS JMK API.
+
+> Karta a oprava volby „Všechny…“ jsou zatím v hlavní větvi repozitáře, nikoli v ZIP balíčku vydání 0.1.1. Do dalšího vydání instalujte aktuální složku `custom_components/ids_jmk` z větve `main` včetně podsložky `www`.
+
+1. Po aktualizaci souborů restartujte Home Assistant a obnovte stránku v prohlížeči nebo aplikaci.
+2. V dashboardu zvolte **Upravit → Přidat kartu** a vyhledejte **IDS JMK**.
+3. Vyberte senzor odjezdové tabule. Volitelně nastavte nadpis, počet řádků a zobrazení stanoviště či piktogramů. Kartu uložte.
+
+Zastávku, linku a směr určuje vybraný senzor. Karta zobrazí nejvýše tolik řádků, kolik senzor poskytuje; více odjezdů povolte v možnostech integrace. Další kartu můžete napojit na jiný senzor.
+
+Pro ruční YAML konfiguraci stačí:
+
+```yaml
+type: custom:ids-jmk-departures-card
+entity: sensor.ids_jmk_nebovidy_kostel
+limit: 6
+# title: Moje odjezdy
+# show_platform: true
+# show_accessibility: true
+```
+
+ID entity nahraďte skutečným ID vytvořeného senzoru. Karta podporuje světlý i tmavý motiv HA. Sloupec **Odjezd** uvádí jízdní řád, pod ním je nenulové odhadované zpoždění; sloupec **Za** již zahrnuje dostupný odhad, nic se k němu nepřičítá. Odpočet se přepočítává každých 15 sekund, data senzoru každých 30 sekund. Piktogramy vozíčku a kola vycházejí z jízdního řádu, nepotvrzují aktuálně nasazené vozidlo. Při výpadku API nebo zastaralých datech karta zobrazí upozornění.
+
+Karta se sama nevkládá do existujících dashboardů. Pokud se po první instalaci neobjeví v nabídce, obnovte celou stránku HA; zkontrolujte také, že byla zkopírována podsložka `www`.
+
+## Alternativní dashboard s flex-table-card
 
 Integrace vytváří senzor; kartu do uživatelova dashboardu sama nevkládá. Nainstalujte [flex-table-card](https://github.com/custom-cards/flex-table-card), přidejte ruční kartu a změňte pouze ID entity podle skutečně vytvořeného senzoru:
 

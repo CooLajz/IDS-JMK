@@ -8,6 +8,12 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .client import APIError, Client
 from .const import DOMAIN, PLATFORMS
+from .frontend import async_register_card
+
+
+async def async_setup(hass, config):
+    await async_register_card(hass)
+    return True
 
 
 async def async_setup_entry(hass, entry):

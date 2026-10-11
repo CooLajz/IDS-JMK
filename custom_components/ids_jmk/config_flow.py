@@ -11,6 +11,9 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .client import APIError, Client, normalize_url
 from .const import DOMAIN
 
+# Required HA select fields reject empty strings even when an option is selected.
+ALL_VALUES = "__all__"
+
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
@@ -78,7 +81,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input:
             options = {k: user_input[k] for k in ("line", "direction", "limit")}
-            stop_id = user_input["platform"] or self.settings["stop_id"]
+            for name in ("line", "direction"):
+                if options[name] == ALL_VALUES:
+                    options[name] = ""
+            platform = user_input["platform"]
+            stop_id = self.settings["stop_id"] if platform in ("", ALL_VALUES) else platform
             try:
                 await self.client.departures(stop_id, options)
             except APIError:
@@ -96,7 +103,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     title=title, data={**self.settings, "stop_id": stop_id, **options}
                 )
         platforms = {
-            "": "Všechna stanoviště",
+            ALL_VALUES: "Všechna stanoviště",
             **{s["id"]: s["platform"] or s["id"] for s in self.details["platforms"]},
         }
         return self.async_show_form(
@@ -104,12 +111,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
             data_schema=vol.Schema(
                 {
-                    vol.Required("platform", default=""): vol.In(platforms),
-                    vol.Required("line", default=""): vol.In(
-                        {"": "Všechny linky", **{v: v for v in self.details["lines"]}}
+                    vol.Required("platform", default=ALL_VALUES): vol.In(platforms),
+                    vol.Required("line", default=ALL_VALUES): vol.In(
+                        {ALL_VALUES: "Všechny linky", **{v: v for v in self.details["lines"]}}
                     ),
-                    vol.Required("direction", default=""): vol.In(
-                        {"": "Všechny směry", **{v: v for v in self.details["directions"]}}
+                    vol.Required("direction", default=ALL_VALUES): vol.In(
+                        {ALL_VALUES: "Všechny směry", **{v: v for v in self.details["directions"]}}
                     ),
                     vol.Required("limit", default=10): vol.All(vol.Coerce(int), vol.Range(min=1, max=50)),
                 }
