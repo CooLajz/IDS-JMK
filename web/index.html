@@ -33,7 +33,7 @@
             id="search"
             type="search"
             autocomplete="off"
-            placeholder="Hledej zastávku, třeba Hlavní nádraží…"
+            placeholder="Hledejte zastávku, třeba Hlavní nádraží…"
             aria-controls="results"
             aria-expanded="false"
           />
@@ -84,8 +84,10 @@
       <section class="board" aria-label="Odjezdová tabule">
         <div class="board-heading">
           <div>
-            <h2 id="stop-title">Kam se vydáš?</h2>
-            <p id="subtitle">Vyber zastávku a zobraz její nejbližší odjezdy.</p>
+            <h2 id="stop-title">Kam se vydáte?</h2>
+            <p id="subtitle">
+              Vyberte zastávku a zobrazte její nejbližší odjezdy.
+            </p>
           </div>
           <span id="updated"></span>
         </div>
@@ -104,7 +106,7 @@
           </table>
         </div>
         <p id="empty" class="empty">
-          Zkus název zastávky. Diakritiku můžeš vynechat.
+          Zkuste název zastávky. Diakritiku můžete vynechat.
         </p>
         <p class="footnote" id="estimate-note" hidden>
           Odhady vycházejí z polohy vozidel. Čas podle jízdního řádu není
@@ -170,7 +172,7 @@
       </p>
       <p class="footnote">
         Pokud je v adrese localhost nebo 127.0.0.1, pro přístup z jiného
-        zařízení ho nahraď dostupnou adresou svého serveru.
+        zařízení ho nahraďte dostupnou adresou svého serveru.
       </p>
     </dialog>
     <dialog id="ha-dialog">
@@ -185,22 +187,22 @@
       <details>
         <summary>Jak nainstalovat integraci</summary>
         <p>
-          Zkopíruj složku
+          Zkopírujte složku
           <code>custom_components/ids_jmk</code> z projektu do složky
           <code>config/custom_components</code> svého Home Assistantu a
-          restartuj ho.
+          restartujte ho.
         </p>
         <p>
-          Potom otevři Nastavení → Zařízení a služby → Přidat integraci → IDS
+          Potom otevřete Nastavení → Zařízení a služby → Přidat integraci → IDS
           JMK. Průvodce nabídne adresu serveru, vyhledání zastávky, stanoviště,
-          linku a směr. Pro HACS přidej GitHub repozitář projektu jako vlastní
+          linku a směr. Pro HACS přidejte GitHub repozitář projektu jako vlastní
           repozitář typu Integration.
         </p>
       </details>
       <label for="ha-url">Adresa serveru dostupná z Home Assistantu</label
       ><input id="ha-url" type="url" />
       <p class="footnote">
-        Pokud je tu localhost, nahraď ho IP adresou serveru.
+        Pokud je tu localhost, nahraďte ho IP adresou serveru.
       </p>
       <label for="ha-code">Konfigurace YAML</label
       ><textarea id="ha-code" readonly rows="16"></textarea

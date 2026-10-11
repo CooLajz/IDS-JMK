@@ -90,7 +90,7 @@ def create_app(settings=None):
 
     app = FastAPI(
         title="IDS JMK API",
-        version="0.1.0",
+        version="0.1.1",
         lifespan=lifespan,
         description="Odjezdy a polohy vozidel. Vlastní odhady jsou označeny vehicle_estimate.",
     )
@@ -104,7 +104,7 @@ def create_app(settings=None):
     def ready():
         if not timetable.ready:
             raise HTTPException(
-                503, "Jízdní řády se připravují. Zkus to za chvíli.", headers={"Retry-After": "30"}
+                503, "Jízdní řády se připravují. Zkuste to za chvíli.", headers={"Retry-After": "30"}
             )
 
     @app.get("/health/live")

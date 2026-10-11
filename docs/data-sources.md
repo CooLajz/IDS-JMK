@@ -13,10 +13,10 @@ Parser stahuje původní zdroje přímo z KORDIS, nikoli týdenní kopii z port�
 
 ## Uvedení zdroje ve vlastních aplikacích
 
-Pro odjezdové tabule, Živý obraz, Home Assistant nebo jiného klienta použij například:
+Pro odjezdové tabule, Živý obraz, Home Assistant nebo jiného klienta použijte například:
 
 > Data: KORDIS JMK, CC BY 4.0. Zpracování: IDS JMK parser. Odhady odjezdů jsou vypočtené z dostupných dat.
 
-Uveď odkazy na poskytovatele, licenci a [projekt](https://github.com/CooLajz/IDS-JMK) na vhodném místě rozhraní nebo v informacích o zdrojích. Zachovej rozlišení mezi jízdním řádem, přímou předpovědí a vlastním odhadem (`source`). Zpracovaná odpověď JSON a vlastní odhad nejsou nezměněným původním GTFS feedem.
+Uveďte odkazy na poskytovatele, licenci a [projekt](https://github.com/CooLajz/IDS-JMK) na vhodném místě rozhraní nebo v informacích o zdrojích. Zachovejte rozlišení mezi jízdním řádem, přímou předpovědí a vlastním odhadem (`source`). Zpracovaná odpověď JSON a vlastní odhad nejsou nezměněným původním GTFS feedem.
 
 Licence MIT v kořeni projektu platí pro vlastní kód a dokumentaci, nikoli pro data poskytovatele. Mapový podklad podléhá samostatným [podmínkám OpenStreetMap](https://www.openstreetmap.org/copyright) a [provozu dlaždic](https://operations.osmfoundation.org/policies/tiles/). Web zobrazuje mapovou atribuci přímo v mapě.

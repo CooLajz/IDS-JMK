@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Připojení k serveru IDS JMK",
-        "description": "Zadej adresu svého serveru, například http://192.168.1.10:8080.",
+        "description": "Zadejte adresu svého serveru, například http://192.168.1.10:8080.",
         "data": {
           "base_url": "Adresa serveru"
         }
@@ -33,8 +33,8 @@
     },
     "error": {
       "cannot_connect": "Server není dostupný nebo nevrátil platná data.",
-      "invalid_url": "Zadej HTTP(S) adresu bez přihlašovacích údajů.",
-      "not_ready": "Server právě připravuje jízdní řády. Zkus to za chvíli.",
+      "invalid_url": "Zadejte HTTP(S) adresu bez přihlašovacích údajů.",
+      "not_ready": "Server právě připravuje jízdní řády. Zkuste to za chvíli.",
       "no_stops": "Žádná zastávka nebyla nalezena."
     },
     "abort": {

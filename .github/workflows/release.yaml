@@ -23,7 +23,7 @@ jobs:
           uv run python - <<'PY'
           import json, os, re, tomllib
           tag = os.environ['RELEASE_TAG']
-          assert re.fullmatch(r'v\d+\.\d+\.\d+', tag), 'Použij tag vX.Y.Z'
+          assert re.fullmatch(r'v\d+\.\d+\.\d+', tag), 'Použijte tag vX.Y.Z'
           version = tag[1:]
           assert tomllib.load(open('pyproject.toml','rb'))['project']['version'] == version
           assert json.load(open('web/package.json'))['version'] == version

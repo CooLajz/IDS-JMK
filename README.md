@@ -2,7 +2,7 @@
 
 Vlastní server pro jízdní řády a realtime data IDS JMK. Poskytuje JSON API pro odjezdové displeje, weby a Home Assistant. Volitelný web nabízí vyhledávání zastávek, odjezdovou tabuli a detail spoje s polohou vozidla.
 
-**Verze 0.1.0.** Instalační Compose soubory pro Portainer a ZIP integrace Home Assistantu jsou součástí [vydání na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API a webu se vydávají samostatně pro Linux AMD64 a ARM64.
+**Verze 0.1.1.** Instalační Compose soubory pro Portainer a ZIP integrace Home Assistantu jsou součástí [vydání na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API a webu se vydávají samostatně pro Linux AMD64 a ARM64.
 
 ## Součásti
 
@@ -43,23 +43,23 @@ Projekt lze sestavit ze zdrojů lokálně:
 docker compose -f compose.web.yaml -f compose.build.yaml up -d --build
 ```
 
-Pro instalaci vydané verze použij v Portaineru **Stacks → Add stack → Web editor**:
+Pro instalaci vydané verze použijte v Portaineru **Stacks → Add stack → Web editor**:
 
 - [compose.yaml](compose.yaml) pro samotné API;
 - [compose.web.yaml](compose.web.yaml) pro API a web;
 - [compose.proxy.yaml](compose.proxy.yaml) pro API a web pouze za existující Docker reverse proxy, bez publikovaných portů.
 
-V prostředí Stacku nastav `BIND_IP` na konkrétní interní IP Docker serveru, dále `API_PORT` a případně `WEB_PORT`. Výchozí vazba `127.0.0.1` zpřístupní porty jen na samotném serveru. Pro přístup z LAN je nutné `BIND_IP` změnit. Na webovém portu je dostupné také API přes proxy, takže ho může použít i Home Assistant.
+V prostředí Stacku nastavte `BIND_IP` na konkrétní interní IP Docker serveru, dále `API_PORT` a případně `WEB_PORT`. Výchozí vazba `127.0.0.1` zpřístupní porty jen na samotném serveru. Pro přístup z LAN je nutné `BIND_IP` změnit. Na webovém portu je dostupné také API přes proxy, takže ho může použít i Home Assistant.
 
-Příklad proměnných je v [.env.example](.env.example). Datový svazek `ids-data` uchovává jízdní řády a identitu serveru. Nemaž jej při aktualizaci. Nasazuj pouze jednu instanci API nad jedním svazkem a jeden proces Uvicornu; plánovač i realtime snapshot žijí v této instanci.
+Příklad proměnných je v [.env.example](.env.example). Datový svazek `ids-data` uchovává jízdní řády a identitu serveru. Nemažte jej při aktualizaci. Nasazujte pouze jednu instanci API nad jedním svazkem a jeden proces Uvicornu; plánovač i realtime snapshot žijí v této instanci.
 
 Služba v této verzi nemá vlastní přihlášení. Pro provoz mimo důvěryhodnou síť ji umísti za odpovídajícím zabezpečením reverzní proxy. Prohlížeč používá API stejného původu, takže není potřeba povolovat plošné CORS.
 
 ### Použití interní sítě reverse proxy
 
-V Portaineru použij `compose.proxy.yaml` a nastav `PROXY_NETWORK` na existující Docker síť, ke které je připojená tvoje proxy (výchozí `proxy`). V proxy nastav upstream **HTTP**, host **`ids-jmk-web`**, port **`8080`**. Doménu a HTTPS certifikát spravuje reverse proxy.
+V Portaineru použijte `compose.proxy.yaml` a nastavte `PROXY_NETWORK` na existující Docker síť, ke které je připojená vaše proxy (výchozí `proxy`). V proxy nastavte upstream **HTTP**, host **`ids-jmk-web`**, port **`8080`**. Doménu a HTTPS certifikát spravuje reverse proxy.
 
-Tento Stack nepublikuje žádné porty API ani webu na hostitele. Do společné sítě je připojen pouze web; API je dostupné přes jeho `/api/v1/` proxy. Web, API i `/docs` tedy používají jednu doménu. Případný vnější nestandardní HTTPS port generátor URL automaticky zachová. Pro více samostatných instalací v jedné proxy síti zvol unikátní síťový alias webu.
+Tento Stack nepublikuje žádné porty API ani webu na hostitele. Do společné sítě je připojen pouze web; API je dostupné přes jeho `/api/v1/` proxy. Web, API i `/docs` tedy používají jednu doménu. Případný vnější nestandardní HTTPS port generátor URL automaticky zachová. Pro více samostatných instalací v jedné proxy síti zvolte unikátní síťový alias webu.
 
 Pro lokální sestavení tohoto režimu:
 
@@ -95,11 +95,11 @@ Aplikace stahuje **přímo z KORDIS JMK**:
 - [GTFS jízdní řády](https://kordis-jmk.cz/gtfs/gtfs.zip)
 - [GTFS Realtime](https://kordis-jmk.cz/gtfs/gtfsReal.dat)
 
-KORDIS na [oficiální stránce otevřených dat](https://www.idsjmk.cz/a/kontakty.html) uvádí pro statické GTFS i dynamické GTFS Realtime licenci **[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)** (ověřeno 11. 10. 2026). Při dalším použití uveď původ dat a licenci a rozliš vlastní úpravy či odhady. Podrobnosti a doporučené uvedení zdroje jsou v [docs/data-sources.md](docs/data-sources.md).
+KORDIS na [oficiální stránce otevřených dat](https://www.idsjmk.cz/a/kontakty.html) uvádí pro statické GTFS i dynamické GTFS Realtime licenci **[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)** (ověřeno 11. 10. 2026). Při dalším použití uveďte původ dat a licenci a rozlišujte vlastní úpravy či odhady. Podrobnosti a doporučené uvedení zdroje jsou v [docs/data-sources.md](docs/data-sources.md).
 
 Týdenní obnova zmíněná na [portálu Brna](https://data.brno.cz/datasets/379d2e9a7907460c8ca7fda1f3e84328/about) se týká jeho kopie ke stažení; není intervalem aktualizace přímých zdrojů KORDIS používaných aplikací.
 
-Mapový podklad používá OpenStreetMap, načítá se pouze při otevření detailu s dostupnou polohou. Pro větší veřejné instalace zvol vlastní vhodný mapový server v souladu s [podmínkami OSM dlaždic](https://operations.osmfoundation.org/policies/tiles/).
+Mapový podklad používá OpenStreetMap, načítá se pouze při otevření detailu s dostupnou polohou. Pro větší veřejné instalace zvolte vlastní vhodný mapový server v souladu s [podmínkami OSM dlaždic](https://operations.osmfoundation.org/policies/tiles/).
 
 Projekt je nezávislý a není oficiální aplikací KORDIS JMK. Vlastní kód je dostupný pod [licencí MIT](LICENSE). Licence kódu nemění licenci dopravních dat ani knihoven třetích stran.
 
@@ -115,4 +115,4 @@ npm run build
 
 Testy používají malé syntetické GTFS archivy, nikoli síťové služby. Pokrývají import, zachování staré databáze, kalendáře a výjimky, časy po půlnoci, změny času, odhady a stáří realtime i odpovědi API.
 
-GitHub Actions ověřují Python testy, web, hassfest, oba Docker obrazy, první import, webovou proxy a zachování identity po restartu. Publikování obrazů je podmíněné úspěchem těchto kontrol. Samostatná testovací instalace byla ověřena za HTTPS reverse proxy; konfigurace a senzor integrace byly ověřeny v izolovaném Home Assistantu 2025.12.5. Konkrétní dashboard a fyzický displej si ověř ve svém prostředí.
+GitHub Actions ověřují Python testy, web, hassfest, oba Docker obrazy, první import, webovou proxy a zachování identity po restartu. Publikování obrazů je podmíněné úspěchem těchto kontrol. Samostatná testovací instalace byla ověřena za HTTPS reverse proxy; konfigurace a senzor integrace byly ověřeny v izolovaném Home Assistantu 2025.12.5. Konkrétní dashboard a fyzický displej si ověřte ve svém prostředí.

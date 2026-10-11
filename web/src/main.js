@@ -82,7 +82,7 @@ async function search() {
     }
     if (!data.stops.length) {
       const p = document.createElement("p");
-      p.textContent = "Žádná zastávka. Zkus kratší název.";
+      p.textContent = "Žádná zastávka. Zkuste kratší název.";
       $("results").append(p);
     }
     $("results").hidden = false;
@@ -186,7 +186,7 @@ async function refresh() {
       board = null;
       $("departures").replaceChildren();
       $("empty").hidden = false;
-      $("empty").textContent = "Odjezdy nejsou dostupné. Zkus je obnovit.";
+      $("empty").textContent = "Odjezdy nejsou dostupné. Zkuste je obnovit.";
       $("updated").textContent = "";
       notice(e.message, true);
     }
@@ -467,7 +467,7 @@ $("copy-api").addEventListener("click", async () => {
     $("api-url").focus();
     $("api-url").select();
     $("api-copy-status").textContent =
-      "Odkaz je označený. Zkopíruj ho klávesovou zkratkou nebo nabídkou prohlížeče.";
+      "Odkaz je označený. Zkopírujte ho klávesovou zkratkou nebo nabídkou prohlížeče.";
   }
 });
 $("close-ha").addEventListener("click", () => $("ha-dialog").close());
@@ -483,7 +483,7 @@ function haConfig() {
       throw Error();
   } catch {
     $("ha-code").value =
-      "Zadej platnou HTTP(S) adresu serveru bez přihlašovacích údajů.";
+      "Zadejte platnou HTTP(S) adresu serveru bez přihlašovacích údajů.";
     return;
   }
   const resource = `${base.href.replace(/\/$/, "")}/api/v1/${boardPath()}`;
@@ -499,7 +499,7 @@ function haConfig() {
     "          - departures",
     "          - generated_at",
     "",
-    "# Následující část vlož jako ruční kartu na dashboard:",
+    "# Následující část vložte jako ruční kartu na dashboard:",
     "type: custom:flex-table-card",
     "title: " + JSON.stringify(selected.name),
     "entities:",
@@ -532,10 +532,10 @@ $("copy-ha").addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText($("ha-code").value);
     $("copy-status").textContent =
-      "Zkopírováno. Senzor a kartu vlož do příslušných částí konfigurace.";
+      "Zkopírováno. Senzor a kartu vložte do příslušných částí konfigurace.";
   } catch {
     $("ha-code").select();
-    $("copy-status").textContent = "Označeno — zkopíruj klávesovou zkratkou.";
+    $("copy-status").textContent = "Označeno — zkopírujte klávesovou zkratkou.";
   }
 });
 async function init() {
@@ -551,7 +551,7 @@ async function init() {
     notice(
       status.schedule_expired
         ? "Platnost jízdních řádů skončila. Server čeká na nová data."
-        : "Jízdní řády jsou připravené. Vyhledej zastávku.",
+        : "Jízdní řády jsou připravené. Vyhledejte zastávku.",
     );
     const params = new URLSearchParams(location.search);
     $("show-previous").checked = params.get("previous") === "1";

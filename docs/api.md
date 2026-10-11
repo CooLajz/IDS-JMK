@@ -1,6 +1,6 @@
 # API v1
 
-Časy jsou ISO 8601 s offsetem pásma Europe/Prague. Identifikátory jsou řetězce; nikdy je nepřeváděj na čísla. Chyby mají HTTP stav a JSON `detail`. Při prvním importu vrací datové endpointy 503, ne prázdný jízdní řád.
+Časy jsou ISO 8601 s offsetem pásma Europe/Prague. Identifikátory jsou řetězce; nikdy je nepřevádějte na čísla. Chyby mají HTTP stav a JSON `detail`. Při prvním importu vrací datové endpointy 503, ne prázdný jízdní řád.
 
 | GET | Výsledek |
 | --- | --- |
@@ -13,7 +13,7 @@
 | `/health/live` | Proces běží |
 | `/health/ready` | Byl dokončen alespoň jeden platný import |
 
-Parametry odjezdů: `limit` 1–100, `horizon` 1–2880 minut, `line` (například `501`), `direction` (přesný název cíle z detailu zastávky), `previous_limit` 0–10 (výchozí 0). Pro konkrétní stanoviště použij jeho ID v URL. Směry v detailu jsou všechny varianty v platném souboru GTFS, nikoli jen aktuálně jedoucí varianty.
+Parametry odjezdů: `limit` 1–100, `horizon` 1–2880 minut, `line` (například `501`), `direction` (přesný název cíle z detailu zastávky), `previous_limit` 0–10 (výchozí 0). Pro konkrétní stanoviště použijte jeho ID v URL. Směry v detailu jsou všechny varianty v platném souboru GTFS, nikoli jen aktuálně jedoucí varianty.
 
 Základ odpovědi odjezdů je `stop`, `generated_at`, `timezone`, `realtime_stale` a pole `departures` a `previous_departures`. Schéma každého řádku je popsané v OpenAPI. Pro HA jsou připravená také pole `departure_time_display` a `minutes_until`. Minuty platí k `generated_at`, nejsou běžícími hodinami; klient musí odpověď obnovovat.
 

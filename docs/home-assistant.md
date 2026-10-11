@@ -4,22 +4,22 @@ Integrace potřebuje běžící IDS JMK API dostupné ze sítě Home Assistantu.
 
 ## Instalace vlastní integrace
 
-Z [vydání projektu](https://github.com/CooLajz/IDS-JMK/releases) stáhni `ids_jmk.zip`, rozbal složku `ids_jmk` do `config/custom_components/ids_jmk` v Home Assistantu a restartuj HA. Alternativně zkopíruj `custom_components/ids_jmk` přímo z repozitáře.
+Z [vydání projektu](https://github.com/CooLajz/IDS-JMK/releases) stáhněte `ids_jmk.zip`, rozbalte složku `ids_jmk` do `config/custom_components/ids_jmk` v Home Assistantu a restartujte HA. Alternativně zkopírujte `custom_components/ids_jmk` přímo z repozitáře.
 
-Pro HACS je repozitář připraven jako vlastní repozitář typu **Integration**. Nejde o integraci přijatou do výchozího katalogu HACS; repozitář musíš přidat ručně.
+Pro HACS je repozitář připraven jako vlastní repozitář typu **Integration**. Nejde o integraci přijatou do výchozího katalogu HACS; repozitář musíte přidat ručně.
 
 V **Nastavení → Zařízení a služby → Přidat integraci → IDS JMK**:
 
-1. Zadej adresu serveru, například `http://192.168.1.10:8080`. Pokud používáš webový kontejner, můžeš zadat jeho adresu a port; `/api` proxy je jeho součástí.
-2. Vyhledej zastávku podle názvu.
-3. Vyber nalezenou zastávku.
-4. Zvol všechna nebo konkrétní stanoviště, linku, směr a počet odjezdů.
+1. Zadejte adresu serveru, například `http://192.168.1.10:8080`. Pokud používáte webový kontejner, můžete zadat jeho adresu a port; `/api` proxy je jeho součástí.
+2. Vyhledejte zastávku podle názvu.
+3. Vyberte nalezenou zastávku.
+4. Zvolte všechna nebo konkrétní stanoviště, linku, směr a počet odjezdů.
 
-Vznikne jeden senzor. Jeho stav je počet minut do nejbližšího nezrušeného odjezdu. Atribut `departures` obsahuje celou tabulku. Při výpadku API se senzor označí jako nedostupný. Další tabuli přidej opakováním průvodce; počet řádků lze měnit v možnostech integrace.
+Vznikne jeden senzor. Jeho stav je počet minut do nejbližšího nezrušeného odjezdu. Atribut `departures` obsahuje celou tabulku. Při výpadku API se senzor označí jako nedostupný. Další tabuli přidejte opakováním průvodce; počet řádků lze měnit v možnostech integrace.
 
 ## Dashboard s flex-table-card
 
-Integrace vytváří senzor; kartu do uživatelova dashboardu sama nevkládá. Nainstaluj [flex-table-card](https://github.com/custom-cards/flex-table-card), přidej ruční kartu a změň pouze ID entity podle skutečně vytvořeného senzoru:
+Integrace vytváří senzor; kartu do uživatelova dashboardu sama nevkládá. Nainstalujte [flex-table-card](https://github.com/custom-cards/flex-table-card), přidejte ruční kartu a změňte pouze ID entity podle skutečně vytvořeného senzoru:
 
 ```yaml
 type: custom:flex-table-card
@@ -45,8 +45,8 @@ columns:
 
 ## Bez vlastní integrace
 
-Webové tlačítko **Použít v Home Assistantu** vygeneruje alternativní REST senzor i konfiguraci tabulky podle aktuálně vybrané zastávky a filtrů. Část `rest:` vlož do konfigurace HA; část karty zvlášť do dashboardu. Pokud již konfigurace `rest:` existuje, přidej položku do jejího seznamu, nevytvářej duplicitní klíč. Pro více tabulí změň názvy a `unique_id` senzorů.
+Webové tlačítko **Použít v Home Assistantu** vygeneruje alternativní REST senzor i konfiguraci tabulky podle aktuálně vybrané zastávky a filtrů. Část `rest:` vložte do konfigurace HA; část karty zvlášť do dashboardu. Pokud již konfigurace `rest:` existuje, přidejte položku do jejího seznamu, nevytvářejte duplicitní klíč. Pro více tabulí změňte názvy a `unique_id` senzorů.
 
-Na běžném HTTP nemusí prohlížeč dovolit kopírování do schránky; text se v tom případě označí pro ruční kopírování. Nepoužívej `localhost` jako adresu vzdáleného serveru — v HA by označoval samotný Home Assistant.
+Na běžném HTTP nemusí prohlížeč dovolit kopírování do schránky; text se v tom případě označí pro ruční kopírování. Nepoužívejte `localhost` jako adresu vzdáleného serveru — v HA by označoval samotný Home Assistant.
 
 Integrace obnovuje data každých 30 sekund. Pole odjezdů a čas aktualizace nejsou určeny k dlouhodobému ukládání do historie; integrace je označuje jako atributy bez záznamu do recorderu.
