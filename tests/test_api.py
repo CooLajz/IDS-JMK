@@ -114,7 +114,7 @@ def test_failed_import_preserves_old_snapshot(timetable, tmp_path):
 
 
 def test_same_archive_does_not_replace_snapshot(timetable, tmp_path):
-    assert not timetable.import_zip(archive(tmp_path / "same.zip"))
+    assert not timetable.import_zip(tmp_path / "gtfs.zip")
 
 
 def test_schedule_no_fake_zero_delay(timetable):
