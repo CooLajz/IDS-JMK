@@ -3,12 +3,15 @@
 import logging
 from datetime import timedelta
 
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .client import APIError, Client
 from .const import DOMAIN, PLATFORMS
 from .frontend import async_register_card
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass, config):

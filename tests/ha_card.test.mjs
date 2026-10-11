@@ -9,7 +9,7 @@ globalThis.HTMLElement = class {
 globalThis.customElements = { get: (name) => elements.get(name), define: (name, value) => elements.set(name, value) };
 globalThis.window = {};
 const source = await readFile(new URL('../custom_components/ids_jmk/www/ids-jmk-departures-card.js', import.meta.url));
-const { departureView } = await import(`data:text/javascript;base64,${source.toString('base64')}`);
+const { departureView, isUpcoming } = await import(`data:text/javascript;base64,${source.toString('base64')}`);
 const now = Date.parse('2026-10-11T18:00:00+02:00');
 const row = { scheduled_departure: '2026-10-11T18:03:00+02:00', departure_time: '2026-10-11T18:05:00+02:00', delay_seconds: 120 };
 
@@ -53,4 +53,25 @@ test('escapes data and respects row limit and equipment options', () => {
   assert.equal((html.match(/<li /g) || []).length, 1);
   assert.ok(!html.includes('mdi:wheelchair-accessibility'));
   assert.throws(() => render(null, { limit: 0 }), /Počet odjezdů/);
+});
+
+test('upcoming threshold includes the boundary, respects delay and can be disabled', () => {
+  assert.equal(isUpcoming(row, 5, now), true);
+  assert.equal(isUpcoming(row, 4, now), false);
+  assert.equal(isUpcoming(row, 0, now), false);
+  assert.equal(isUpcoming({ ...row, cancelled: true }, 5, now), false);
+  assert.equal(isUpcoming(row, 5, now + 6 * 60000), false);
+  assert.equal(isUpcoming({}, 5, now), false);
+});
+test('both layouts are selectable and stale rows are never highlighted', () => {
+  const fresh = { ...attributes, generated_at: new Date().toISOString(), departures: [{ ...row, departure_time: new Date(Date.now() + 120000).toISOString() }] };
+  const modern = render({ state: '2', attributes: fresh });
+  assert.match(modern, /<ha-card class="modern">/);
+  assert.match(modern, /class="countdown [^"]*upcoming/);
+  const compact = render({ state: '2', attributes: fresh }, { layout: 'compact', highlight_minutes: 0 });
+  assert.match(compact, /<ha-card class="compact">/);
+  assert.ok(!/class="countdown [^"]*upcoming/.test(compact));
+  assert.ok(!/class="countdown [^"]*upcoming/.test(render({ state: '2', attributes: { ...fresh, realtime_stale: true } })));
+  assert.throws(() => render(null, { layout: 'invalid' }), /Vyberte vzhled/);
+  assert.throws(() => render(null, { highlight_minutes: -1 }), /Hranice zvýraznění/);
 });

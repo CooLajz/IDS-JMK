@@ -25,7 +25,7 @@ Aktuální zdrojová verze integrace obsahuje vlastní kartu **IDS JMK — Odjez
 
 1. Po aktualizaci souborů restartujte Home Assistant a obnovte stránku v prohlížeči nebo aplikaci.
 2. V dashboardu zvolte **Upravit → Přidat kartu** a vyhledejte **IDS JMK**.
-3. Vyberte senzor odjezdové tabule. Volitelně nastavte nadpis, počet řádků a zobrazení stanoviště či piktogramů. Kartu uložte.
+3. Vyberte senzor odjezdové tabule. Volitelně nastavte nadpis, vzhled, počet řádků, hranici zeleného zvýraznění a zobrazení stanoviště či piktogramů. Kartu uložte.
 
 Zastávku, linku a směr určuje vybraný senzor. Karta zobrazí nejvýše tolik řádků, kolik senzor poskytuje; více odjezdů povolte v možnostech integrace. Další kartu můžete napojit na jiný senzor.
 
@@ -35,12 +35,18 @@ Pro ruční YAML konfiguraci stačí:
 type: custom:ids-jmk-departures-card
 entity: sensor.ids_jmk_nebovidy_kostel
 limit: 6
+layout: modern # modern nebo compact
+highlight_minutes: 5 # 0 vypne zelené zvýraznění
 # title: Moje odjezdy
 # show_platform: true
 # show_accessibility: true
 ```
 
 ID entity nahraďte skutečným ID vytvořeného senzoru. Karta podporuje světlý i tmavý motiv HA. Sloupec **Odjezd** uvádí jízdní řád, pod ním je nenulové odhadované zpoždění; sloupec **Za** již zahrnuje dostupný odhad, nic se k němu nepřičítá. Odpočet se přepočítává každých 15 sekund, data senzoru každých 30 sekund. Piktogramy vozíčku a kola vycházejí z jízdního řádu, nepotvrzují aktuálně nasazené vozidlo. Při výpadku API nebo zastaralých datech karta zobrazí upozornění.
+
+Vzhled **Moderní** používá větší odpočet a vzdušnější řádky. **Kompaktní** má menší záhlaví a nízké řádky; prostor pro doplňující údaje zabírá pouze tam, kde je stanoviště nebo zpoždění. Hlavní údaje zůstávají v obou variantách zarovnané. Ikonky vybavení se zobrazují vedle cíle a lze je vypnout přepínačem v editoru (`show_accessibility: false`). Moderní vzhled dlouhé cíle zalamuje; kompaktní je zkracuje výpustkou a plný název ponechá v popisku.
+
+Zelený odpočet označuje blížící se odjezd v nastaveném počtu minut (výchozí **5**, rozsah **0–60**, **0** zvýraznění vypne). Hranice pracuje s odjezdem včetně dostupného odhadu zpoždění. Zrušené nebo již odjeté spoje a zastaralá data se nezvýrazňují.
 
 Karta se sama nevkládá do existujících dashboardů. Pokud se po první instalaci neobjeví v nabídce, obnovte celou stránku HA; zkontrolujte také, že byla zkopírována podsložka `www`.
 

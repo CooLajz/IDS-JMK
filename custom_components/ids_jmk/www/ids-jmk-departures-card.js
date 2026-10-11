@@ -1,5 +1,6 @@
 /* IDS JMK dashboard card. No external dependencies or direct API requests. */
 const TYPE = "ids-jmk-departures-card";
+const DEFAULTS = { limit: 10, layout: "modern", highlight_minutes: 5, show_platform: true, show_accessibility: true };
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const time = (value) => {
@@ -19,10 +20,16 @@ export function departureView(row, now = Date.now()) {
   return {
     scheduled: time(row.scheduled_departure),
     delay: delay ? `${delay > 0 ? "+" : ""}${delay} min` : "",
-    countdown: row.cancelled ? "Zrušeno" : minutes === null ? "—" : minutes < 0 ? "Odjel" : minutes === 0 ? "Nyní" : String(minutes),
+    countdown: row.cancelled ? "Zrušeno" : minutes === null ? "—" : timestamp < now ? "Odjel" : minutes === 0 ? "Nyní" : String(minutes),
     unit: !row.cancelled && minutes > 0 ? "min" : "",
-    departed: !row.cancelled && minutes !== null && minutes < 0,
+    departed: !row.cancelled && Number.isFinite(timestamp) && timestamp < now,
   };
+}
+
+export function isUpcoming(row, threshold, now = Date.now()) {
+  const departure = Date.parse(row.departure_time || row.estimated_departure || row.scheduled_departure);
+  return threshold > 0 && !row.cancelled && Number.isFinite(departure) &&
+    departure >= now && departure - now <= threshold * 60000;
 }
 
 const styles = `
@@ -36,31 +43,57 @@ const styles = `
   .heading { min-width:0; }
   h2 { margin:0; font-size:20px; line-height:1.3; font-weight:650; overflow-wrap:anywhere; }
   .eyebrow { font-size:10px; letter-spacing:1.7px; font-weight:700; color:var(--secondary-text-color, #657267); margin-bottom:4px; }
-  .labels, .row { display:grid; grid-template-columns:48px minmax(0, 1fr) 64px 49px; gap:10px; align-items:center; }
-  .labels { padding:0 20px 9px; font-size:10px; text-transform:uppercase; letter-spacing:.7px; color:var(--secondary-text-color, #657267); }
-  .labels span:nth-child(n+3) { text-align:right; }
+  .labels, .row { display:grid; grid-template-columns:44px minmax(0, 1fr) 58px 52px; column-gap:10px; align-items:center; }
+  .labels { padding:0 16px 9px; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--secondary-text-color, #657267); }
+  .labels span:nth-child(n+3) { text-align:center; }
   .rows { list-style:none; padding:0; margin:0; }
-  .row { padding:14px 20px; border-top:1px solid var(--divider-color, #e6eae6); }
-  .row.first { background:color-mix(in srgb, var(--primary-color, #447b32) 6%, transparent); }
-  .line { padding:7px 3px; text-align:center; border-radius:9px; font-weight:800; font-size:17px; background:color-mix(in srgb, var(--primary-color, #447b32) 13%, transparent); color:var(--primary-text-color, #202c24); overflow-wrap:anywhere; }
-  .destination { font-size:14px; font-weight:600; line-height:1.35; overflow-wrap:anywhere; }
-  .meta { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-top:5px; color:var(--secondary-text-color, #657267); font-size:11px; }
-  .scheduled { text-align:right; font-size:15px; font-weight:650; font-variant-numeric:tabular-nums; }
-  .delay { display:block; margin-top:4px; font-size:11px; color:var(--warning-color, #986200); white-space:nowrap; }
-  .countdown { text-align:right; font-size:25px; line-height:1; font-weight:750; font-variant-numeric:tabular-nums; }
-  .countdown.word { font-size:12px; line-height:1.3; overflow-wrap:anywhere; }
-  .unit { display:block; font-size:10px; color:var(--secondary-text-color, #657267); margin-top:5px; font-weight:400; }
+  .row { grid-template-rows:32px minmax(16px, auto); padding:10px 16px; border-top:1px solid var(--divider-color, #e6eae6); }
+  .row.first { background:color-mix(in srgb, var(--primary-color, #447b32) 5%, transparent); }
+  .line { grid-column:1; grid-row:1; padding:5px 2px; text-align:center; border-radius:8px; font-weight:800; font-size:16px; line-height:22px; background:color-mix(in srgb, var(--primary-color, #447b32) 13%, transparent); color:var(--primary-text-color, #202c24); overflow:hidden; }
+  .destination { grid-column:2; grid-row:1; display:flex; gap:5px; align-items:center; min-width:0; font-size:14px; font-weight:600; line-height:20px; }
+  .destination-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .amenities { display:flex; flex-shrink:0; gap:3px; color:var(--secondary-text-color, #657267); }
+  .amenities ha-icon { width:15px; height:15px; --mdc-icon-size:15px; }
+  .destination-block { display:contents; }
+  .modern .destination-block { display:block; grid-column:2; grid-row:1 / 3; align-self:start; padding-top:6px; min-width:0; }
+  .modern .destination { display:flex; align-items:flex-start; }
+  .modern .destination-text { white-space:normal; overflow-wrap:anywhere; }
+  .modern .amenities { padding-top:2px; }
+  .modern .meta { display:block; padding-top:2px; }
+  .meta { grid-column:2; grid-row:2; color:var(--secondary-text-color, #657267); font-size:11px; line-height:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .scheduled { grid-column:3; grid-row:1; text-align:center; font-size:15px; line-height:20px; font-weight:650; font-variant-numeric:tabular-nums; }
+  .delay { grid-column:3; grid-row:2; text-align:center; font-size:11px; line-height:16px; color:var(--warning-color, #986200); white-space:nowrap; }
+  .countdown { grid-column:4; grid-row:1; display:grid; place-items:center; height:32px; border-radius:8px; font-size:25px; line-height:1; font-weight:750; font-variant-numeric:tabular-nums; }
+  .countdown.word { font-size:11px; }
+  .countdown.upcoming { background:#d9f6df; color:#155d2b; }
+  .unit { grid-column:4; grid-row:2; text-align:center; font-size:10px; line-height:16px; color:var(--secondary-text-color, #657267); }
   .departed { opacity:.55; }
-  .cancelled .destination, .cancelled .scheduled > span:first-child { text-decoration:line-through; }
+  .cancelled .destination-text, .cancelled .scheduled { text-decoration:line-through; }
   footer { display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; justify-content:space-between; padding:12px 20px; border-top:1px solid var(--divider-color, #e6eae6); font-size:10px; color:var(--secondary-text-color, #657267); }
   .status { display:flex; align-items:center; gap:6px; }
   .dot { height:6px; width:6px; border-radius:50%; background:var(--success-color, #4b944d); }
   .warning .dot { background:var(--warning-color, #986200); }
   .message { padding:20px; line-height:1.5; font-size:14px; }
+  .compact header { padding:10px 12px; gap:8px; }
+  .compact .badge { width:28px; height:28px; border-radius:8px; }
+  .compact .badge ha-icon { width:19px; height:19px; --mdc-icon-size:19px; }
+  .compact h2 { font-size:16px; }
+  .compact .eyebrow { display:none; }
+  .compact .labels, .compact .row { grid-template-columns:34px minmax(0,1fr) 54px 46px; column-gap:8px; }
+  .compact .labels { padding:0 12px 5px; font-size:9px; }
+  .compact .row { grid-template-rows:24px auto; padding:5px 12px; }
+  .compact .line { padding:2px; border-radius:5px; font-size:14px; line-height:20px; }
+  .compact .destination { font-size:13px; }
+  .compact .scheduled { font-size:14px; }
+  .compact .countdown { font-size:20px; height:24px; border-radius:5px; }
+  .compact .countdown.word { font-size:10px; }
+  .compact .unit { display:none; }
+  .compact .meta, .compact .delay { font-size:10px; line-height:13px; }
+  .compact footer { padding:6px 12px; font-size:9px; }
   @media (max-width:380px) {
     header { padding:16px 12px; } .labels { padding:0 12px 9px; }
-    .row { padding:13px 12px; } .labels, .row { grid-template-columns:40px minmax(0,1fr) 56px 42px; gap:8px; }
-    footer { padding:12px; } h2 { font-size:18px; } .countdown { font-size:23px; }
+    .row { padding:10px 12px; } .labels, .row { grid-template-columns:36px minmax(0,1fr) 54px 46px; column-gap:7px; }
+    footer { padding:10px 12px; } h2 { font-size:18px; } .countdown { font-size:23px; }
   }
 `;
 
@@ -71,7 +104,13 @@ class IDSJMKDeparturesCard extends HTMLElement {
     if (config.limit !== undefined && (!Number.isInteger(config.limit) || config.limit < 1 || config.limit > 50)) {
       throw new Error("Počet odjezdů musí být celé číslo od 1 do 50.");
     }
-    this.config = { limit: 10, show_platform: true, show_accessibility: true, ...config };
+    if (config.layout !== undefined && !["modern", "compact"].includes(config.layout)) {
+      throw new Error("Vyberte vzhled Moderní nebo Kompaktní.");
+    }
+    if (config.highlight_minutes !== undefined && (!Number.isInteger(config.highlight_minutes) || config.highlight_minutes < 0 || config.highlight_minutes > 60)) {
+      throw new Error("Hranice zvýraznění musí být celé číslo od 0 do 60 minut.");
+    }
+    this.config = { ...DEFAULTS, ...config };
     this.render();
   }
   set hass(hass) { this.states = hass.states; this.render(); }
@@ -87,7 +126,7 @@ class IDSJMKDeparturesCard extends HTMLElement {
     this.render();
   }
   disconnectedCallback() { clearInterval(this.timer); this.unsubscribe?.(); this.unsubscribe = undefined; }
-  getCardSize() { return 2 + Math.min(this.config?.limit ?? 10, 10) * 1.5; }
+  getCardSize() { return 2 + (this.config?.limit ?? 10) * (this.config?.layout === "compact" ? 0.8 : 1.4); }
   getGridOptions() { return { columns: 12, min_columns: 12 }; }
   static getConfigElement() { return document.createElement(`${TYPE}-editor`); }
   static getStubConfig(hass) {
@@ -112,19 +151,22 @@ class IDSJMKDeparturesCard extends HTMLElement {
     } else if (!rows.length) {
       body = '<div class="message" role="status">Pro zvolené filtry nejsou dostupné žádné odjezdy.</div>';
     } else {
-      body = `<div class="labels" aria-hidden="true"><span>Linka</span><span>Směr</span><span>Odjezd</span><span>Za</span></div><ol class="rows">${rows.map((row, index) => {
+      body = `<div class="labels" aria-hidden="true"><span>Linka</span><span>Směr</span><span>Odjezd</span><span>${this.config.layout === "compact" ? "Za (min)" : "Za"}</span></div><ol class="rows">${rows.map((row, index) => {
         const view = departureView(row);
         const amenities = this.config.show_accessibility ?
           `${row.wheelchair_accessible === true ? icon("wheelchair-accessibility", "Podle jízdního řádu: přístupné vozíčkářům") : ""}${row.bikes_allowed === true ? icon("bicycle", "Podle jízdního řádu: přeprava kol") : ""}` : "";
+        const upcoming = !stale && isUpcoming(row, this.config.highlight_minutes);
         return `<li class="row ${index === 0 ? "first" : ""} ${view.departed ? "departed" : ""} ${row.cancelled ? "cancelled" : ""}">
           <span class="line" aria-label="Linka ${escape(row.line)}">${escape(row.line)}</span>
-          <div><div class="destination">${escape(row.destination)}</div><div class="meta">${this.config.show_platform && row.platform ? `<span>Stan. ${escape(row.platform)}</span>` : ""}${amenities}</div></div>
-          <div class="scheduled"><span title="Odjezd podle jízdního řádu">${escape(view.scheduled)}</span>${view.delay && !row.cancelled ? `<span class="delay" title="Odhadované zpoždění">${escape(view.delay)}</span>` : ""}</div>
-          <div class="countdown ${view.unit ? "" : "word"}" title="${row.cancelled ? "Spoj je zrušen" : "Čas do odjezdu včetně dostupného odhadu zpoždění"}">${escape(view.countdown)}${view.unit ? `<span class="unit">${view.unit}</span>` : ""}</div>
+          <div class="destination-block"><div class="destination"><span class="destination-text" title="${escape(row.destination)}">${escape(row.destination)}</span>${amenities ? `<span class="amenities">${amenities}</span>` : ""}</div>${this.config.show_platform && row.platform ? `<span class="meta" title="Stanoviště ${escape(row.platform)}">Stan. ${escape(row.platform)}</span>` : ""}</div>
+          <span class="scheduled" title="Odjezd podle jízdního řádu">${escape(view.scheduled)}</span>
+          <span class="countdown ${view.unit ? "" : "word"} ${upcoming ? "upcoming" : ""}" title="${row.cancelled ? "Spoj je zrušen" : upcoming ? "Blížící se odjezd včetně dostupného odhadu zpoždění" : "Čas do odjezdu včetně dostupného odhadu zpoždění"}">${escape(view.countdown)}</span>
+          ${view.delay && !row.cancelled ? `<span class="delay" title="Odhadované zpoždění">${escape(view.delay)}</span>` : ""}
+          ${view.unit ? `<span class="unit">${view.unit}</span>` : ""}
         </li>`;
       }).join("")}</ol>`;
     }
-    const markup = `<style>${styles}</style><ha-card>
+    const markup = `<style>${styles}</style><ha-card class="${this.config.layout}">
       <header><div class="badge">${icon("bus-clock", "Odjezdy IDS JMK")}</div><div class="heading"><div class="eyebrow">IDS JMK · ODJEZDY</div><h2>${escape(title)}</h2></div></header>
       ${body}
       <footer><span class="status ${stale || unavailable ? "warning" : ""}"><span class="dot"></span>${unavailable ? "Bez spojení" : old ? "Data nejsou aktuální" : stale ? "Realtime není aktuální" : "Data aktualizována"}</span><span>Aktualizace ${escape(time(attributes.generated_at))}</span></footer>
@@ -138,7 +180,7 @@ class IDSJMKDeparturesCard extends HTMLElement {
 
 class IDSJMKDeparturesEditor extends HTMLElement {
   constructor() { super(); this.attachShadow({ mode: "open" }); }
-  setConfig(config) { this.config = { limit: 10, show_platform: true, show_accessibility: true, ...config }; this.render(); }
+  setConfig(config) { this.config = { ...DEFAULTS, ...config }; this.render(); }
   set hass(hass) { this._hass = hass; this.render(); }
   connectedCallback() { this.render(); }
   render() {
@@ -148,11 +190,13 @@ class IDSJMKDeparturesEditor extends HTMLElement {
       this.form.schema = [
         { name: "entity", required: true, selector: { entity: { domain: "sensor", integration: "ids_jmk" } } },
         { name: "title", selector: { text: {} } },
-        { name: "limit", selector: { number: { min: 1, max: 50, mode: "box" } } },
+        { name: "layout", required: true, selector: { select: { mode: "dropdown", options: [{ value: "modern", label: "Moderní" }, { value: "compact", label: "Kompaktní" }] } } },
+        { name: "highlight_minutes", required: true, selector: { number: { min: 0, max: 60, mode: "box", unit_of_measurement: "min" } } },
+        { name: "limit", required: true, selector: { number: { min: 1, max: 50, mode: "box" } } },
         { name: "show_platform", selector: { boolean: {} } },
         { name: "show_accessibility", selector: { boolean: {} } },
       ];
-      const labels = { entity: "Senzor odjezdové tabule", title: "Vlastní nadpis (volitelné)", limit: "Počet zobrazených odjezdů", show_platform: "Zobrazit stanoviště", show_accessibility: "Zobrazit vybavení podle jízdního řádu" };
+      const labels = { entity: "Senzor odjezdové tabule", title: "Vlastní nadpis (volitelné)", layout: "Vzhled karty", highlight_minutes: "Zvýraznit odjezd do (0 = vypnuto)", limit: "Počet zobrazených odjezdů", show_platform: "Zobrazit stanoviště", show_accessibility: "Zobrazit ikonky vybavení podle jízdního řádu" };
       this.form.computeLabel = (schema) => labels[schema.name];
       this.form.addEventListener("value-changed", (event) => {
         event.stopPropagation();
