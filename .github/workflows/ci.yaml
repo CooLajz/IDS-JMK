@@ -1,0 +1,49 @@
+name: Kontroly
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.13'
+      - run: uv sync --frozen
+      - run: uv run ruff check api custom_components tests
+      - run: uv run pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci && npm run build
+        working-directory: web
+      - run: docker compose -f compose.web.yaml -f compose.build.yaml config --quiet
+      - run: docker compose -f compose.proxy.yaml -f compose.build.yaml config --quiet
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f compose.web.yaml -f compose.build.yaml build
+      - run: docker compose -f compose.web.yaml -f compose.build.yaml up -d
+      - name: Ověření prvního importu a webové proxy
+        run: python scripts/smoke.py --state /tmp/ids-jmk-smoke.json
+      - name: Ověření restartu a persistentních dat
+        run: |
+          docker compose -f compose.web.yaml restart api
+          python scripts/smoke.py --state /tmp/ids-jmk-smoke.json --verify-state
+      - if: failure()
+        run: docker compose -f compose.web.yaml logs --tail 100
+      - if: always()
+        run: docker compose -f compose.web.yaml down

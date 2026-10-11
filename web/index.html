@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#111512" />
+    <title>Odjezdy · IDS JMK</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/" aria-label="IDS JMK — úvod"
+        ><span class="brand-mark" aria-hidden="true"></span>IDS JMK</a
+      ><a href="/docs" target="_blank" rel="noopener">API ↗</a>
+    </header>
+    <main>
+      <h1>Odjezdy</h1>
+      <section aria-label="Výběr zastávky">
+        <label for="search">Zastávka</label>
+        <div class="search-wrap">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+          >
+            <circle cx="10" cy="10" r="6.5" />
+            <path d="m15 15 5 5" /></svg
+          ><input
+            id="search"
+            type="search"
+            autocomplete="off"
+            placeholder="Hledej zastávku, třeba Hlavní nádraží…"
+            aria-controls="results"
+            aria-expanded="false"
+          />
+          <div id="results" hidden></div>
+        </div>
+        <div class="filters">
+          <div>
+            <label for="direction">Směr</label
+            ><select id="direction" disabled>
+              <option value="">Všechny směry</option>
+            </select>
+          </div>
+          <div>
+            <label for="line">Linka</label
+            ><select id="line" disabled>
+              <option value="">Všechny linky</option>
+            </select>
+          </div>
+          <div>
+            <label for="platform">Stanoviště</label
+            ><select id="platform" disabled>
+              <option value="">Všechna stanoviště</option>
+            </select>
+          </div>
+          <button id="refresh" class="primary" disabled>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+            >
+              <path d="M20 7v5h-5M4 17v-5h5" />
+              <path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1" /></svg
+            >Obnovit
+          </button>
+        </div>
+        <label class="board-option" for="show-previous">
+          <input id="show-previous" type="checkbox" />
+          Zobrazit poslední minulý odjezd
+        </label>
+      </section>
+      <p id="notice" role="status" aria-live="polite">
+        Připojuji se k jízdním řádům…
+      </p>
+      <section class="board" aria-label="Odjezdová tabule">
+        <div class="board-heading">
+          <div>
+            <h2 id="stop-title">Kam se vydáš?</h2>
+            <p id="subtitle">Vyber zastávku a zobraz její nejbližší odjezdy.</p>
+          </div>
+          <span id="updated"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Linka</th>
+                <th>Směr</th>
+                <th class="platform-col">Stanoviště</th>
+                <th>Odjezd</th>
+                <th>Za / před</th>
+              </tr>
+            </thead>
+            <tbody id="departures"></tbody>
+          </table>
+        </div>
+        <p id="empty" class="empty">
+          Zkus název zastávky. Diakritiku můžeš vynechat.
+        </p>
+        <p class="footnote" id="estimate-note" hidden>
+          Odhady vycházejí z polohy vozidel. Čas podle jízdního řádu není
+          potvrzením jízdy načas. Volitelně lze zobrazit poslední odjezd z
+          uplynulých 24 hodin; jeho skutečný odjezd nemusí být potvrzen.
+        </p>
+        <div class="board-actions">
+          <button id="ha" class="outline" disabled>
+            Použít v Home Assistantu</button
+          ><button id="api-link" class="outline" disabled>
+            API URL / JSON
+          </button>
+          <button id="fullscreen" class="quiet">Celá obrazovka</button>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <a
+        href="https://www.idsjmk.cz/a/kontakty.html"
+        target="_blank"
+        rel="noopener"
+        >Data: KORDIS JMK · CC BY 4.0</a
+      ><span
+        >Nezávislý projekt ·
+        <a
+          href="https://github.com/CooLajz/IDS-JMK"
+          target="_blank"
+          rel="noopener"
+          >GitHub ↗</a
+        ></span
+      >
+    </footer>
+    <dialog id="detail">
+      <div class="dialog-top">
+        <h2 id="detail-title">Detail spoje</h2>
+        <button id="close-detail" aria-label="Zavřít detail">Zavřít</button>
+      </div>
+      <p id="detail-status" role="status"></p>
+      <p id="detail-features" class="footnote"></p>
+      <div id="map" hidden></div>
+      <ol id="trip-stops"></ol>
+    </dialog>
+    <dialog id="api-dialog" aria-labelledby="api-title">
+      <div class="dialog-top">
+        <h2 id="api-title">API URL / JSON</h2>
+        <button id="close-api">Zavřít</button>
+      </div>
+      <p>
+        Odkaz vrátí aktuální data pro stejnou zastávku, stanoviště, linku a směr
+        jako tabule. Přebírá také volbu minulého odjezdu.
+      </p>
+      <label for="api-url">URL pro získání JSONu</label>
+      <textarea id="api-url" readonly rows="4" spellcheck="false"></textarea>
+      <div class="api-actions">
+        <button id="copy-api" class="primary">Zkopírovat URL</button>
+        <a id="open-api" target="_blank" rel="noopener">Otevřít JSON ↗</a>
+      </div>
+      <p id="api-copy-status" role="status"></p>
+      <p class="footnote">
+        Budoucí odjezdy jsou v poli <code>departures</code>, volitelný minulý
+        odjezd v <code>previous_departures</code>. Odkaz vždy vrací čerstvou
+        odpověď, nikoli uložený snímek tabule.
+      </p>
+      <p class="footnote">
+        Pokud je v adrese localhost nebo 127.0.0.1, pro přístup z jiného
+        zařízení ho nahraď dostupnou adresou svého serveru.
+      </p>
+    </dialog>
+    <dialog id="ha-dialog">
+      <div class="dialog-top">
+        <h2>Home Assistant</h2>
+        <button id="close-ha">Zavřít</button>
+      </div>
+      <p>
+        Integrace IDS JMK nabídne nastavení serveru a výběr zastávky v průvodci.
+        Níže je alternativní REST senzor a karta flex-table-card.
+      </p>
+      <details>
+        <summary>Jak nainstalovat integraci</summary>
+        <p>
+          Ve vývojové verzi zkopíruj složku
+          <code>custom_components/ids_jmk</code> z projektu do složky
+          <code>config/custom_components</code> svého Home Assistantu a
+          restartuj ho.
+        </p>
+        <p>
+          Potom otevři Nastavení → Zařízení a služby → Přidat integraci → IDS
+          JMK. Průvodce nabídne adresu serveru, vyhledání zastávky, stanoviště,
+          linku a směr. Instalace přes HACS bude dostupná po zveřejnění
+          integrace.
+        </p>
+      </details>
+      <label for="ha-url">Adresa serveru dostupná z Home Assistantu</label
+      ><input id="ha-url" type="url" />
+      <p class="footnote">
+        Pokud je tu localhost, nahraď ho IP adresou serveru.
+      </p>
+      <label for="ha-code">Konfigurace YAML</label
+      ><textarea id="ha-code" readonly rows="16"></textarea
+      ><button id="copy-ha" class="primary">Zkopírovat konfiguraci</button>
+      <p id="copy-status" role="status"></p>
+    </dialog>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

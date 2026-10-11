@@ -1,0 +1,54 @@
+{
+  "title": "IDS JMK",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Připojení k serveru IDS JMK",
+        "description": "Zadej adresu svého serveru, například http://192.168.1.10:8080.",
+        "data": {
+          "base_url": "Adresa serveru"
+        }
+      },
+      "search": {
+        "title": "Vyhledat zastávku",
+        "data": {
+          "query": "Název zastávky"
+        }
+      },
+      "stop": {
+        "title": "Vybrat zastávku",
+        "data": {
+          "stop_id": "Zastávka"
+        }
+      },
+      "board": {
+        "title": "Odjezdová tabule",
+        "data": {
+          "platform": "Stanoviště",
+          "line": "Linka",
+          "direction": "Směr",
+          "limit": "Počet odjezdů"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Server není dostupný nebo nevrátil platná data.",
+      "invalid_url": "Zadej HTTP(S) adresu bez přihlašovacích údajů.",
+      "not_ready": "Server právě připravuje jízdní řády. Zkus to za chvíli.",
+      "no_stops": "Žádná zastávka nebyla nalezena."
+    },
+    "abort": {
+      "already_configured": "Tato odjezdová tabule už je nastavená."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Nastavení tabule",
+        "data": {
+          "limit": "Počet odjezdů"
+        }
+      }
+    }
+  }
+}

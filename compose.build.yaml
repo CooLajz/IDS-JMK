@@ -1,0 +1,6 @@
+# Použij spolu s compose.web.yaml pro lokální sestavení před prvním releasem.
+services:
+  api:
+    build: .
+  web:
+    build: ./web

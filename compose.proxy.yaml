@@ -1,0 +1,32 @@
+# API a web bez publikovaných portů, dostupné přes existující Docker síť reverse proxy.
+services:
+  api:
+    image: ghcr.io/coolajz/ids-jmk-api:${IMAGE_TAG:-0.1.0}
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /data
+      GTFS_INTERVAL_SECONDS: ${GTFS_INTERVAL_SECONDS:-3600}
+      REALTIME_INTERVAL_SECONDS: ${REALTIME_INTERVAL_SECONDS:-30}
+      REALTIME_MAX_AGE_SECONDS: ${REALTIME_MAX_AGE_SECONDS:-180}
+    volumes:
+      - ids-data:/data
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+  web:
+    image: ghcr.io/coolajz/ids-jmk-web:${IMAGE_TAG:-0.1.0}
+    restart: unless-stopped
+    depends_on: [api]
+    networks:
+      default:
+      proxy:
+        aliases: [ids-jmk-web]
+    environment:
+      API_UPSTREAM: http://api:8080
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+volumes:
+  ids-data:
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-proxy}

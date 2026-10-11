@@ -1,49 +1,118 @@
 # IDS JMK
 
-Samostatně nasaditelná služba pro zpracování jízdních řádů a realtime dat IDS JMK. Cílem je poskytovat jednoduché JSON API pro aplikace, weby, odjezdové displeje a další systémy.
+Vlastní server pro jízdní řády a realtime data IDS JMK. Poskytuje JSON API pro odjezdové displeje, weby a Home Assistant. Volitelný web nabízí vyhledávání zastávek, odjezdovou tabuli a detail spoje s polohou vozidla.
 
-> Projekt je ve fázi návrhu. Zatím neobsahuje funkční aplikaci, Docker obrazy ani instalační release.
+**První vývojová verze.** Implementace je připravena k místnímu testování. Veřejné Docker obrazy a instalační release zatím nejsou publikované; samotné Compose konfigurace s názvem obrazu před prvním vydáním nestačí.
 
-## Plánované součásti
+## Součásti
 
-- **API** — stahování a zpracování GTFS a realtime dat, lokální databáze, vyhledávání zastávek, odjezdy, odhady zpoždění a polohy vozidel.
-- **Web** — volitelný klient stejného API s vyhledáváním zastávek, výběrem stanoviště či směru, odjezdovou tabulí a mapou vozidla na vybraném spoji.
+| Součást | Funkce |
+| --- | --- |
+| API | Import GTFS do SQLite, automatické aktualizace, vyhledávání zastávek a stanovišť, odjezdy a vlastní odhady zpoždění, polohy vozidel, OpenAPI |
+| Web | Vyhledávání bez diakritiky, filtr směru/linky/stanoviště, AJAX obnova a průběžný odpočet, poslední minulý odjezd, sdílitelná URL, detail spoje, značka a mapa čerstvé polohy, konfigurace pro HA |
+| Home Assistant | Vlastní integrace s průvodcem: adresa serveru → vyhledání zastávky → stanoviště, linka a směr. Jeden senzor se seznamem odjezdů pro dashboard |
 
-Obě součásti budou mít samostatný Docker obraz. API bude fungovat i bez webu.
+API a web mají **samostatné Docker obrazy**. Web nic nestahuje z GTFS a nemá vlastní databázi. API funguje zcela bez webu. Komponenta Home Assistantu komunikuje pouze s API.
 
-## Plánované nasazení
+## Místní spuštění pro vývoj
 
-Pro Docker Compose a Portainer budou připraveny dvě konfigurace:
+Požadavky: Python 3.13, [uv](https://docs.astral.sh/uv/) a Node.js 22.12+.
 
-1. Pouze API.
-2. API a web v jednom Stacku.
+```sh
+uv sync --frozen
+uv run uvicorn api.main:app --host 127.0.0.1 --port 8000
+```
 
-Uživatel si zvolí publikovaný port. Služba si při prvním startu stáhne a zpracuje data; odjezdy zpřístupní po dokončení importu. Databáze bude uložena v persistentním svazku bez požadavku na samostatnou databázovou službu.
+V druhém terminálu:
 
-Plánujeme verzované veřejné Docker obrazy pro AMD64 a ARM64, GitHub Releases s odpovídajícími Compose konfiguracemi, návod k aktualizaci a dokumentaci API. Automatické aktualizace zdrojových dat budou oddělené od aktualizací samotné aplikace.
+```sh
+cd web
+npm ci
+npm run dev
+```
 
-## Zdroje dat
+Web: [http://127.0.0.1:5173](http://127.0.0.1:5173). API dokumentace: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
-- [Statické GTFS — jízdní řády](https://kordis-jmk.cz/gtfs/gtfs.zip)
-- [GTFS Realtime — provozní data](https://kordis-jmk.cz/gtfs/gtfsReal.dat)
+První start automaticky stáhne jízdní řády a vytvoří databázi v `data/`. Během importu API vrací stav 503 s vysvětlením; web počká a připojí se automaticky.
 
-Poskytovatelem zdrojových dat je KORDIS JMK. Tento projekt je nezávislý a není oficiální aplikací poskytovatele.
+## Docker a Portainer
 
-Realtime feed může obsahovat polohy vozidel bez předpovědí odjezdů typu TripUpdate. V takovém případě chceme odjezdy odhadovat propojením údajů o vozidle s jízdním řádem. Vlastní odhad nebude označován jako dopravcem potvrzený čas.
+Před prvním zveřejněním obrazů lze projekt sestavit lokálně:
 
-API bude rozlišovat plánovaný čas, předpověď ze zdroje a vlastní odhad. Uvede stáří realtime dat; při chybějících či zastaralých údajích poskytne jízdní řád bez předstírání nulového zpoždění.
+```sh
+docker compose -f compose.web.yaml -f compose.build.yaml up -d --build
+```
 
-## První plánovaný rozsah
+Po vydání obrazů použij v Portaineru **Stacks → Add stack → Web editor**:
 
-- Vyhledávání zastávek a jejich stanovišť.
-- Odjezdy se zohledněním provozních kalendářů, výjimek a spojů po půlnoci.
-- Odhadované odjezdy a zpoždění z dostupných realtime údajů.
-- Přístup k polohám vozidel pro navazující klienty.
-- Stav služby, průběh počátečního importu a stáří dat.
-- Volitelná webová odjezdová tabule a detail spoje.
+- [compose.yaml](compose.yaml) pro samotné API;
+- [compose.web.yaml](compose.web.yaml) pro API a web;
+- [compose.proxy.yaml](compose.proxy.yaml) pro API a web pouze za existující Docker reverse proxy, bez publikovaných portů.
 
-Konkrétní API, technologie a intervaly obnovování ještě nejsou stanovené. Nejdříve bude podporován a ověřován IDS JMK; podpora jiných dopravních systémů není zatím garantována.
+V prostředí Stacku nastav `BIND_IP` na konkrétní interní IP Docker serveru, dále `API_PORT` a případně `WEB_PORT`. Výchozí vazba `127.0.0.1` zpřístupní porty jen na samotném serveru. Pro přístup z LAN je nutné `BIND_IP` změnit. Na webovém portu je dostupné také API přes proxy, takže ho může použít i Home Assistant.
 
-## Licence
+Příklad proměnných je v [.env.example](.env.example). Datový svazek `ids-data` uchovává jízdní řády a identitu serveru. Nemaž jej při aktualizaci. Nasazuj pouze jednu instanci API nad jedním svazkem a jeden proces Uvicornu; plánovač i realtime snapshot žijí v této instanci.
 
-Licence projektu bude zvolena před vydáním implementace. Veřejná dostupnost repozitáře sama o sobě nenahrazuje licenci. Podmínky použití zdrojových dopravních dat se řídí jejich poskytovatelem a budou zdokumentovány samostatně.
+Služba v této verzi nemá vlastní přihlášení. Pro provoz mimo důvěryhodnou síť ji umísti za odpovídajícím zabezpečením reverzní proxy. Prohlížeč používá API stejného původu, takže není potřeba povolovat plošné CORS.
+
+### Použití interní sítě reverse proxy
+
+V Portaineru použij `compose.proxy.yaml` a nastav `PROXY_NETWORK` na existující Docker síť, ke které je připojená tvoje proxy (výchozí `proxy`). V proxy nastav upstream **HTTP**, host **`ids-jmk-web`**, port **`8080`**. Doménu a HTTPS certifikát spravuje reverse proxy.
+
+Tento Stack nepublikuje žádné porty API ani webu na hostitele. Do společné sítě je připojen pouze web; API je dostupné přes jeho `/api/v1/` proxy. Web, API i `/docs` tedy používají jednu doménu. Případný vnější nestandardní HTTPS port generátor URL automaticky zachová. Pro více samostatných instalací v jedné proxy síti zvol unikátní síťový alias webu.
+
+Pro lokální sestavení tohoto režimu:
+
+```sh
+docker compose -f compose.proxy.yaml -f compose.build.yaml up -d --build
+```
+
+### Nastavení API
+
+| Proměnná | Výchozí hodnota | Význam |
+| --- | --- | --- |
+| `DATA_DIR` | `data` (v obrazu `/data`) | Persistentní data |
+| `GTFS_URL` | Přímá adresa KORDIS níže | Zdroj jízdních řádů |
+| `REALTIME_URL` | Přímá adresa KORDIS níže | Zdroj realtime |
+| `GTFS_INTERVAL_SECONDS` | `3600` | Kontrola jízdních řádů, minimum 3600 s |
+| `REALTIME_INTERVAL_SECONDS` | `30` | Kontrola realtime, minimum 15 s |
+| `REALTIME_MAX_AGE_SECONDS` | `180` | Maximální stáří použitelných realtime zpráv |
+| `DOWNLOAD_ENABLED` | `true` | `false` vypne stahování pro izolované testy |
+
+Stejný obsah GTFS se znovu neimportuje. Nový archiv se zkontroluje a importuje do oddělené databáze, která pak atomicky nahradí původní. Při chybě zůstává poslední funkční jízdní řád. Realtime snapshot se pravidelně nahrazuje, nepersistuje se přes restart.
+
+## API a Home Assistant
+
+- [Popis API a odhadů](docs/api.md)
+- [Instalace integrace a odjezdová tabule v HA](docs/home-assistant.md)
+- [Postup vydávání](docs/releases.md)
+- Interaktivní dokumentace `/docs` a strojový popis `/openapi.json`
+
+## Zdroje a podmínky dat
+
+Aplikace stahuje **přímo z KORDIS JMK**:
+
+- [GTFS jízdní řády](https://kordis-jmk.cz/gtfs/gtfs.zip)
+- [GTFS Realtime](https://kordis-jmk.cz/gtfs/gtfsReal.dat)
+
+KORDIS na [oficiální stránce otevřených dat](https://www.idsjmk.cz/a/kontakty.html) uvádí pro statické GTFS i dynamické GTFS Realtime licenci **[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)** (ověřeno 11. 10. 2026). Při dalším použití uveď původ dat a licenci a rozliš vlastní úpravy či odhady. Podrobnosti a doporučené uvedení zdroje jsou v [docs/data-sources.md](docs/data-sources.md).
+
+Týdenní obnova zmíněná na [portálu Brna](https://data.brno.cz/datasets/379d2e9a7907460c8ca7fda1f3e84328/about) se týká jeho kopie ke stažení; není intervalem aktualizace přímých zdrojů KORDIS používaných aplikací.
+
+Mapový podklad používá OpenStreetMap, načítá se pouze při otevření detailu s dostupnou polohou. Pro větší veřejné instalace zvol vlastní vhodný mapový server v souladu s [podmínkami OSM dlaždic](https://operations.osmfoundation.org/policies/tiles/).
+
+Projekt je nezávislý a není oficiální aplikací KORDIS JMK. Vlastní kód je dostupný pod [licencí MIT](LICENSE). Licence kódu nemění licenci dopravních dat ani knihoven třetích stran.
+
+## Ověření
+
+```sh
+uv run pytest -q
+uv run ruff check api custom_components tests
+cd web
+npm ci
+npm run build
+```
+
+Testy používají malé syntetické GTFS archivy, nikoli síťové služby. Pokrývají import, zachování staré databáze, kalendáře a výjimky, časy po půlnoci, změny času, odhady a stáří realtime i odpovědi API.
+
+Docker sestavení, smoke test prvního importu a hassfest jsou připravené v GitHub Actions. Jejich přítomnost v repozitáři není potvrzením úspěšného běhu. Plné nasazení do Portaineru a ověření dashboardu v existující instalaci HA jsou samostatným krokem.

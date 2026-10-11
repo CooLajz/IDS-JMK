@@ -28,3 +28,8 @@ dist/
 coverage/
 .idea/
 .vscode/
+
+# Testy a nástroje
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

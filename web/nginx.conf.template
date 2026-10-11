@@ -1,0 +1,13 @@
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    resolver 127.0.0.11 valid=30s ipv6=off;
+    set $backend "${API_UPSTREAM}";
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    location /api/ { proxy_pass $backend$request_uri; proxy_read_timeout 30s; }
+    location = /docs { proxy_pass $backend$request_uri; }
+    location = /openapi.json { proxy_pass $backend$request_uri; }
+    location / { try_files $uri $uri/ /index.html; }
+}

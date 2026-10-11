@@ -1,0 +1,54 @@
+{
+  "title": "IDS JMK",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to IDS JMK",
+        "description": "Enter your server URL, for example http://192.168.1.10:8080.",
+        "data": {
+          "base_url": "Server URL"
+        }
+      },
+      "search": {
+        "title": "Search for a stop",
+        "data": {
+          "query": "Stop name"
+        }
+      },
+      "stop": {
+        "title": "Select a stop",
+        "data": {
+          "stop_id": "Stop"
+        }
+      },
+      "board": {
+        "title": "Departure board",
+        "data": {
+          "platform": "Platform",
+          "line": "Line",
+          "direction": "Destination",
+          "limit": "Departure count"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect or invalid response.",
+      "invalid_url": "Enter an HTTP(S) URL without credentials.",
+      "not_ready": "The server is importing timetables. Try again shortly.",
+      "no_stops": "No stops found."
+    },
+    "abort": {
+      "already_configured": "This board is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Board settings",
+        "data": {
+          "limit": "Departure count"
+        }
+      }
+    }
+  }
+}
