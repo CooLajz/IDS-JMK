@@ -144,10 +144,12 @@
         <h2 id="detail-title">Detail spoje</h2>
         <button id="close-detail" aria-label="Zavřít detail">Zavřít</button>
       </div>
-      <p id="detail-status" role="status"></p>
-      <p id="detail-features" class="footnote"></p>
+      <div class="detail-meta">
+        <div id="detail-status" role="status"></div>
+        <div id="detail-features"></div>
+      </div>
       <div id="map" hidden></div>
-      <ol id="trip-stops"></ol>
+      <ol id="trip-stops" tabindex="0" aria-label="Zastávky spoje"></ol>
     </dialog>
     <dialog id="api-dialog" aria-labelledby="api-title">
       <div class="dialog-top">

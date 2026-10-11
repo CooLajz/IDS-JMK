@@ -45,7 +45,7 @@ Web používá AJAX (`fetch`) po 30 sekundách i po návratu na záložku nebo o
 
 ## Vybavení plánovaného spoje
 
-`wheelchair_accessible` a `bikes_allowed` jsou ve výpisu odjezdů i detailu spoje. Čtou se ze statického `trips.txt`: hodnota `1` se převádí na `true`, `2` na `false` a `0` / prázdné na `null`. Význam odpovídá [specifikaci GTFS](https://gtfs.org/documentation/schedule/reference/#tripstxt). Neznámá informace není zákaz. Web ukazuje piktogramy pouze pro `true`; detail vypisuje i negativní a neznámé hodnoty.
+`wheelchair_accessible` a `bikes_allowed` jsou ve výpisu odjezdů i detailu spoje. Čtou se ze statického `trips.txt`: hodnota `1` se převádí na `true`, `2` na `false` a `0` / prázdné na `null`. Význam odpovídá [specifikaci GTFS](https://gtfs.org/documentation/schedule/reference/#tripstxt). Neznámá informace není zákaz. Web ukazuje piktogramy pouze pro `true`; detail používá stejné ikony s popiskem. Záporné a neznámé hodnoty zůstávají dostupné v API.
 
 Jde o plánované vlastnosti vozidla/spoje, nikoli potvrzení výbavy právě nasazeného vozu. Přístupnost vozidla neznamená přístupnost zastávky či nástupiště a povolení kol negarantuje volné místo. Klimatizaci současné zpracovávané zdroje neuvádějí. Starší databáze zůstane při aktualizaci čitelná a při dalším importu se doplní nově načítaná data, i když se archiv nezměnil.
 
@@ -60,3 +60,5 @@ Volba **Zobrazit poslední minulý odjezd** je na webu výchozí **vypnutá**. P
 Vozidla obsahují `current_stop` s `stop_id`, `stop_sequence` a `status`: `in_transit_to` znamená následující zastávku, `incoming_at` příjezd a `stopped_at` stání v uvedené zastávce. Nejde o konečnou zastávku spoje. Při stání neoznačujeme tuto zastávku za následující.
 
 Pořadí se ověřuje proti jízdnímu řádu. Pokud ho zdroj neposkytuje (aktuální feed KORDIS uvádí pouze ID zastávky), použije se ID jen při jednoznačném výskytu v trase. Při nejednoznačnosti, rozporu, zastaralé zprávě nebo chybějící použitelné poloze je `current_stop: null`. Web zvýrazňuje odpovídající zastávku v seznamu i na mapě a zvýraznění obnovuje s polohou vozidla.
+
+Seznam zastávek v detailu má vlastní posouvání. Při otevření a změně zastávky hlášené vozidlem se zvýrazněný řádek posune do středu seznamu. Obnova stejné zastávky zachová ruční posunutí seznamu; mapa se neposouvá.

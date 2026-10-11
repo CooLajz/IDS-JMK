@@ -361,6 +361,15 @@ dialog {
   width: min(780px, 92vw);
   max-height: 90vh;
 }
+#detail[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#detail .dialog-top,
+#detail .detail-meta {
+  flex-shrink: 0;
+}
 dialog::backdrop {
   background: #000b;
   backdrop-filter: blur(4px);
@@ -383,14 +392,50 @@ dialog p {
   line-height: 1.6;
   color: var(--muted);
 }
+.detail-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+#detail-status > span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 3px;
+}
+#detail-status time {
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+#detail-features .trip-features {
+  margin: 0;
+  gap: 12px;
+}
+#detail-features .amenity-icon svg {
+  width: 24px;
+  height: 24px;
+}
 #map {
-  height: 300px;
+  height: min(34vh, 300px);
+  flex-shrink: 0;
   border-radius: 10px;
   margin: 18px 0;
   isolation: isolate;
 }
 #trip-stops {
-  padding-left: 28px;
+  min-height: 0;
+  flex: 1 1 auto;
+  max-height: min(28vh, 240px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0 12px 0 28px;
+}
+#trip-stops:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 4px;
 }
 #trip-stops li {
   padding: 9px 0;
@@ -496,9 +541,6 @@ body:fullscreen {
   }
   .dialog-top h2 {
     font-size: 23px;
-  }
-  #map {
-    height: 250px;
   }
   .empty {
     font-size: 14px;

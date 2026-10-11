@@ -13,6 +13,7 @@ let selected = null,
 let selectedTrip = null,
   vehicleLayer = null,
   stopLayer = null,
+  followedStopKey = null,
   boardReceivedAt = 0,
   refreshTimer,
   nextRefreshAt = 0;
@@ -24,6 +25,33 @@ const timeText = (v) =>
     hour: "2-digit",
     minute: "2-digit",
   });
+function vehicleFeatures(d) {
+  const features = document.createElement("span");
+  features.className = "trip-features";
+  const icons = [
+    [
+      d.wheelchair_accessible,
+      "Vozidlo přístupné vozíčkářům podle jízdního řádu",
+      '<circle cx="13" cy="4" r="2"/><path d="m12 7-1 7h6l3 6 2-1M12 10h6M8 10a6 6 0 1 0 6 9"/>',
+    ],
+    [
+      d.bikes_allowed,
+      "Přeprava kol podle jízdního řádu",
+      '<circle cx="5" cy="17" r="4"/><circle cx="19" cy="17" r="4"/><path d="m5 17 5-9 5 9H5m5-9h7l2 9M8 5h4m3-1h3l2 4"/>',
+    ],
+  ];
+  for (const [available, label, drawing] of icons) {
+    if (available !== true) continue;
+    const icon = document.createElement("span");
+    icon.className = "amenity-icon";
+    icon.title = label;
+    icon.setAttribute("role", "img");
+    icon.setAttribute("aria-label", label);
+    icon.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${drawing}</svg>`;
+    features.append(icon);
+  }
+  return features;
+}
 function notice(text, error = false) {
   $("notice").textContent = text;
   $("notice").classList.toggle("error", error);
@@ -249,31 +277,7 @@ function renderBoard() {
     const pastLabel = document.createElement("small");
     pastLabel.className = "past-label";
     dest.append(pastLabel);
-    const features = document.createElement("span");
-    features.className = "trip-features";
-    const icons = [
-      [
-        d.wheelchair_accessible,
-        "Vozidlo přístupné vozíčkářům podle jízdního řádu",
-        '<circle cx="13" cy="4" r="2"/><path d="m12 7-1 7h6l3 6 2-1M12 10h6M8 10a6 6 0 1 0 6 9"/>',
-      ],
-      [
-        d.bikes_allowed,
-        "Přeprava kol podle jízdního řádu",
-        '<circle cx="5" cy="17" r="4"/><circle cx="19" cy="17" r="4"/><path d="m5 17 5-9 5 9H5m5-9h7l2 9M8 5h4m3-1h3l2 4"/>',
-      ],
-    ];
-    for (const [available, label, drawing] of icons) {
-      if (available !== true) continue;
-      const icon = document.createElement("span");
-      icon.className = "amenity-icon";
-      icon.title = label;
-      icon.setAttribute("role", "img");
-      icon.setAttribute("aria-label", label);
-      icon.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${drawing}</svg>`;
-      features.append(icon);
-    }
-    dest.append(features);
+    dest.append(vehicleFeatures(d));
     cell(d.platform || "—", "platform-col");
     const time = cell("");
     const strong = document.createElement("span");
@@ -365,6 +369,7 @@ async function showTrip(d) {
   }
   vehicleLayer = null;
   stopLayer = null;
+  followedStopKey = null;
   $("detail-title").textContent = `${d.line} · ${d.destination}`;
   $("detail-status").textContent = "Načítám spoj…";
   $("detail-features").textContent = "";
@@ -382,10 +387,7 @@ async function updateTrip() {
       `trips/${encodeURIComponent(d.trip_id)}?service_date=${d.service_date}`,
     );
     if (seq !== tripSequence || !$("detail").open) return;
-    const featureText = (value) =>
-      value === true ? "ano" : value === false ? "ne" : "neuvedeno";
-    $("detail-features").textContent =
-      `Podle jízdního řádu: vozidlo přístupné vozíčkářům — ${featureText(trip.wheelchair_accessible)}; přeprava kol — ${featureText(trip.bikes_allowed)}. Údaje nepotvrzují aktuálně nasazený vůz, přístupnost nástupiště ani volnou kapacitu.`;
+    $("detail-features").replaceChildren(vehicleFeatures(trip));
     const vehicles = trip.vehicles.filter((v) => !v.stale && v.position);
     const stopStatus = (s) => vehicles.find((v) =>
       v.current_stop?.stop_sequence === s.seq && v.current_stop.stop_id === s.stop_id,
@@ -395,7 +397,9 @@ async function updateTrip() {
       incoming_at: "Přijíždí do zastávky",
       stopped_at: "Právě v zastávce",
     })[status];
-    $("trip-stops").replaceChildren();
+    const stopList = $("trip-stops");
+    const previousScroll = stopList.scrollTop;
+    stopList.replaceChildren();
     for (const s of trip.stops) {
       const li = document.createElement("li"),
         t = document.createElement("strong");
@@ -405,6 +409,7 @@ async function updateTrip() {
       li.append(t, name);
       const label = stopLabel(stopStatus(s));
       if (label) {
+        li.dataset.stopKey = `${s.stop_id}/${s.seq}`;
         li.classList.add("vehicle-stop");
         const badge = document.createElement("small");
         badge.textContent = label;
@@ -412,9 +417,18 @@ async function updateTrip() {
       }
       $("trip-stops").append(li);
     }
-    $("detail-status").textContent = vehicles.length
-      ? `Poloha aktualizována ${timeText(vehicles[0].updated_at)}. Časy zastávek jsou podle jízdního řádu.`
-      : "Čerstvá poloha vozidla není dostupná. Zobrazené časy jsou podle jízdního řádu.";
+    $("detail-status").replaceChildren();
+    if (vehicles.length) {
+      const caption = document.createElement("span");
+      caption.textContent = "Aktualizace polohy";
+      const updated = document.createElement("time");
+      updated.dateTime = vehicles[0].updated_at;
+      updated.textContent = timeText(vehicles[0].updated_at);
+      updated.title = new Date(vehicles[0].updated_at).toLocaleString("cs-CZ", { timeZone: "Europe/Prague" });
+      $("detail-status").append(caption, updated);
+    } else {
+      $("detail-status").textContent = "Poloha není dostupná";
+    }
     $("map").hidden = !vehicles.length;
     if (vehicles.length) {
       const firstMap = !map;
@@ -463,6 +477,15 @@ async function updateTrip() {
       }
       setTimeout(() => map?.invalidateSize(), 50);
     }
+    stopList.scrollTop = previousScroll;
+    const followedStop = stopList.querySelector(".vehicle-stop");
+    const nextStopKey = followedStop?.dataset.stopKey ?? null;
+    if (followedStop && nextStopKey !== followedStopKey) {
+      const top = followedStop.getBoundingClientRect().top - stopList.getBoundingClientRect().top
+        + stopList.scrollTop - (stopList.clientHeight - followedStop.offsetHeight) / 2;
+      stopList.scrollTo({ top: Math.max(0, top), behavior: "instant" });
+    }
+    followedStopKey = nextStopKey;
   } catch (e) {
     if (seq === tripSequence) {
       $("detail-status").textContent = e.message;
