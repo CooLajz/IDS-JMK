@@ -102,7 +102,7 @@ class Realtime:
         return self.vehicle_list(trip_id, stops, day, now=now)
 
     @staticmethod
-    def current_stop(vehicle, stops):
+    def current_stop(vehicle, stops, service_date=None, now=None):
         """Resolve the reported stop occurrence; never guess repeated or conflicting stops."""
         sequence, stop_id = vehicle.get("sequence"), vehicle.get("stop_id")
         matches = [
@@ -122,7 +122,24 @@ class Realtime:
         }.get(vehicle.get("status"))
         if status is None:
             return None
-        return {"stop_id": stop["stop_id"], "stop_sequence": stop["seq"], "status": status}
+        # Some KORDIS vehicles already report the second stop while waiting at the origin.
+        if service_date is not None and now is not None and vehicle.get("position"):
+            first = stops[0]
+            departure = service_epoch(service_date) + first["departure"]
+            if (
+                now < departure
+                and vehicle["timestamp"] < departure
+                and stop["seq"] in {s["seq"] for s in stops[:2]}
+                and distance(vehicle["position"], first) <= 100
+            ):
+                return {
+                    "stop_id": first["stop_id"], "stop_sequence": first["seq"],
+                    "status": "before_departure", "source": "schedule_and_position",
+                }
+        return {
+            "stop_id": stop["stop_id"], "stop_sequence": stop["seq"],
+            "status": status, "source": "realtime",
+        }
 
     def vehicle_list(self, trip_id=None, stops=None, service_date=None, stops_by_trip=None, now=None):
         snap = self.snapshot
@@ -152,7 +169,10 @@ class Realtime:
                     "bearing": v["bearing"],
                     "updated_at": iso(v["timestamp"]),
                     "stale": stale,
-                    "current_stop": self.current_stop(v, trip_stops) if not stale and position else None,
+                    "current_stop": (
+                        self.current_stop(v, trip_stops, service_date, now)
+                        if not stale and position else None
+                    ),
                 }
             )
         return result

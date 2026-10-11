@@ -406,6 +406,7 @@ async function updateTrip() {
       in_transit_to: "Následující zastávka",
       incoming_at: "Přijíždí do zastávky",
       stopped_at: "Právě v zastávce",
+      before_departure: "Před plánovaným odjezdem",
     })[status];
     const stopList = $("trip-stops");
     const previousScroll = stopList.scrollTop;

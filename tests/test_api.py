@@ -473,7 +473,9 @@ def test_vehicle_reports_unique_stop_without_sequence(timetable, status, label):
     rt.snapshot.vehicles[("T", "")]["sequence"] = None
     stops = timetable.trip("T", now.date())["stops"]
     vehicle = rt.trip_vehicles("T", stops, now.date(), now.timestamp())[0]
-    assert vehicle["current_stop"] == {"stop_id": "B", "stop_sequence": 2, "status": label}
+    assert vehicle["current_stop"] == {
+        "stop_id": "B", "stop_sequence": 2, "status": label, "source": "realtime"
+    }
 
 
 @pytest.mark.parametrize("case", ["repeated", "conflicting", "missing", "stale", "no_position"])
@@ -509,3 +511,27 @@ def test_vehicle_stop_sequence_disambiguates_loop_and_updates(timetable):
     assert current["stop_sequence"] == 4
     v.update(sequence=2, stop_id="B")
     assert rt.vehicle_list("T", stops, now.date(), now=now.timestamp())[0]["current_stop"]["stop_id"] == "B"
+
+
+@pytest.mark.parametrize("case,expected", [
+    ("at_origin", "before_departure"),
+    ("away_from_origin", "in_transit_to"),
+    ("after_start", "in_transit_to"),
+    ("later_stop", "in_transit_to"),
+])
+def test_vehicle_before_planned_start(timetable, case, expected):
+    now = at("2026-10-11T13:55:00" if case != "after_start" else "2026-10-11T14:01:00")
+    rt = Realtime()
+    rt.snapshot = vehicle_rt(now, stop="B", status=pb.VehiclePosition.IN_TRANSIT_TO)
+    v = rt.snapshot.vehicles[("T", "")]
+    v["sequence"] = None
+    if case == "away_from_origin":
+        v["position"] = {"lat": 49.005, "lon": 16.005}
+    elif case == "later_stop":
+        v["stop_id"] = "C"
+    stops = timetable.trip("T", now.date())["stops"]
+    current = rt.trip_vehicles("T", stops, now.date(), now.timestamp())[0]["current_stop"]
+    assert current["status"] == expected
+    if expected == "before_departure":
+        assert current["stop_id"] == "A"
+        assert current["source"] == "schedule_and_position"

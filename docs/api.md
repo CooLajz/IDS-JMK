@@ -64,3 +64,5 @@ Pořadí se ověřuje proti jízdnímu řádu. Pokud ho zdroj neposkytuje (aktu�
 Seznam zastávek v detailu má vlastní posouvání. Při otevření a změně zastávky hlášené vozidlem se zvýrazněný řádek posune do středu seznamu. Obnova stejné zastávky zachová ruční posunutí seznamu; mapa se neposouvá.
 
 Volba **Sledovat vozidlo** je při otevření detailu vypnutá. Po zapnutí se mapa vystředí na vozidlo a při každé aktualizaci následuje jeho čerstvou polohu bez změny přiblížení. Po vypnutí zůstává ruční poloha mapy zachována.
+
+V detailu konkrétního provozního dne může `current_stop.status` mít hodnotu `before_departure`: před plánovaným začátkem jízdy je čerstvá poloha do 100 m od výchozí zastávky a realtime odkazuje na první nebo druhou zastávku. V tom případě se označí výchozí zastávka s `source: schedule_and_position` a popiskem „Před plánovaným odjezdem“. Jde o kombinaci plánu a polohy, nikoli potvrzení, že vozidlo stojí. Ostatní stavy mají `source: realtime`.
