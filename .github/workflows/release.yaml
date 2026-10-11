@@ -15,7 +15,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.13'
-      - run: uv sync --frozen && uv run pytest -q && uv run ruff check api custom_components tests
+      - run: uv sync --frozen && uv run pytest -q && uv run ruff check api custom_components tests scripts
       - name: Ověření verze
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -76,7 +76,8 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           mkdir release
-          cp LICENSE docs/data-sources.md .env.example release/
+          cp LICENSE docs/data-sources.md release/
+          cp .env.example release/env.example
           python - <<'PY'
           import os, pathlib, re, zipfile
           version=os.environ['RELEASE_TAG'][1:]

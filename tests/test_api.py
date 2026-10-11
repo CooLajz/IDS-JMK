@@ -434,3 +434,28 @@ def test_import_reads_planned_vehicle_features(timetable):
     assert rows[0]["bikes_allowed"] is True
     assert rows[1]["wheelchair_accessible"] is False
     assert rows[1]["bikes_allowed"] is None
+
+
+def test_source_outage_keeps_imported_schedule(tmp_path, monkeypatch):
+    import time
+
+    import httpx
+
+    real_client = httpx.AsyncClient
+    transport = httpx.MockTransport(lambda request: httpx.Response(503, request=request))
+    monkeypatch.setattr(
+        "api.main.httpx.AsyncClient", lambda **kwargs: real_client(transport=transport, **kwargs)
+    )
+    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=True))
+    app.state.timetable.import_zip(archive(tmp_path / "feed.zip"))
+    with TestClient(app) as client:
+        for _ in range(100):
+            status = client.get("/api/v1/status").json()
+            if status["gtfs_error"] and status["realtime_error"]:
+                break
+            time.sleep(0.01)
+        assert status["gtfs_error"] == "HTTPStatusError"
+        assert status["realtime_error"] == "HTTPStatusError"
+        assert status["ready"] and status["realtime"]["stale"]
+        assert client.get("/health/ready").status_code == 200
+        assert client.get("/api/v1/stops?query=nadrazi").json()["stops"][0]["id"] == "P"

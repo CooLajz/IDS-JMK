@@ -4,9 +4,9 @@ Integrace potřebuje běžící IDS JMK API dostupné ze sítě Home Assistantu.
 
 ## Instalace vlastní integrace
 
-Před prvním veřejným vydáním zkopíruj složku `custom_components/ids_jmk` z tohoto projektu do `config/custom_components/ids_jmk` v Home Assistantu a restartuj HA. V release bude připraven také ZIP; obsah `ids_jmk` patří do `custom_components`.
+Z [vydání projektu](https://github.com/CooLajz/IDS-JMK/releases) stáhni `ids_jmk.zip`, rozbal složku `ids_jmk` do `config/custom_components/ids_jmk` v Home Assistantu a restartuj HA. Alternativně zkopíruj `custom_components/ids_jmk` přímo z repozitáře.
 
-Pro HACS je repozitář připraven jako vlastní repozitář typu **Integration**. Možnost skutečné instalace z GitHubu závisí na zveřejnění těchto souborů; nejde zatím o integraci přijatou do výchozího katalogu HACS.
+Pro HACS je repozitář připraven jako vlastní repozitář typu **Integration**. Nejde o integraci přijatou do výchozího katalogu HACS; repozitář musíš přidat ručně.
 
 V **Nastavení → Zařízení a služby → Přidat integraci → IDS JMK**:
 

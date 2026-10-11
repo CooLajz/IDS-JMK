@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: '3.13'
       - run: uv sync --frozen
-      - run: uv run ruff check api custom_components tests
+      - run: uv run ruff check api custom_components tests scripts
       - run: uv run pytest -q
       - uses: actions/setup-node@v4
         with:

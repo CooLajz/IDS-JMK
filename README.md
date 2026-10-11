@@ -2,7 +2,7 @@
 
 Vlastní server pro jízdní řády a realtime data IDS JMK. Poskytuje JSON API pro odjezdové displeje, weby a Home Assistant. Volitelný web nabízí vyhledávání zastávek, odjezdovou tabuli a detail spoje s polohou vozidla.
 
-**První vývojová verze.** Implementace je připravena k místnímu testování. Veřejné Docker obrazy a instalační release zatím nejsou publikované; samotné Compose konfigurace s názvem obrazu před prvním vydáním nestačí.
+**Verze 0.1.0.** Instalační Compose soubory pro Portainer a ZIP integrace Home Assistantu jsou součástí [vydání na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API a webu se vydávají samostatně pro Linux AMD64 a ARM64.
 
 ## Součásti
 
@@ -37,13 +37,13 @@ První start automaticky stáhne jízdní řády a vytvoří databázi v `data/`
 
 ## Docker a Portainer
 
-Před prvním zveřejněním obrazů lze projekt sestavit lokálně:
+Projekt lze sestavit ze zdrojů lokálně:
 
 ```sh
 docker compose -f compose.web.yaml -f compose.build.yaml up -d --build
 ```
 
-Po vydání obrazů použij v Portaineru **Stacks → Add stack → Web editor**:
+Pro instalaci vydané verze použij v Portaineru **Stacks → Add stack → Web editor**:
 
 - [compose.yaml](compose.yaml) pro samotné API;
 - [compose.web.yaml](compose.web.yaml) pro API a web;
@@ -115,4 +115,4 @@ npm run build
 
 Testy používají malé syntetické GTFS archivy, nikoli síťové služby. Pokrývají import, zachování staré databáze, kalendáře a výjimky, časy po půlnoci, změny času, odhady a stáří realtime i odpovědi API.
 
-Docker sestavení, smoke test prvního importu a hassfest jsou připravené v GitHub Actions. Jejich přítomnost v repozitáři není potvrzením úspěšného běhu. Plné nasazení do Portaineru a ověření dashboardu v existující instalaci HA jsou samostatným krokem.
+GitHub Actions ověřují Python testy, web, hassfest, oba Docker obrazy, první import, webovou proxy a zachování identity po restartu. Publikování obrazů je podmíněné úspěchem těchto kontrol. Samostatná testovací instalace byla ověřena za HTTPS reverse proxy; konfigurace a senzor integrace byly ověřeny v izolovaném Home Assistantu 2025.12.5. Konkrétní dashboard a fyzický displej si ověř ve svém prostředí.
