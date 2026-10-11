@@ -190,6 +190,24 @@ function boardPath(includePrevious = false) {
     if ($(name).value) p.set(name, $(name).value);
   return `stops/${encodeURIComponent($("platform").value || selected.id)}/departures?${p}`;
 }
+function filterLink(container, name, value, label, key) {
+  if (!value || ![...$(name).options].some((o) => o.value === value)) {
+    container.textContent = label;
+    return;
+  }
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "filter-link";
+  button.dataset.key = `${key}/${name}`;
+  button.textContent = label;
+  button.title = `Filtrovat ${name === "direction" ? "směr" : "stanoviště"}: ${label}`;
+  button.setAttribute("aria-label", button.title);
+  button.addEventListener("click", () => {
+    $(name).value = value;
+    refresh();
+  });
+  container.append(button);
+}
 async function refresh() {
   if (!selected) return;
   const seq = ++boardSequence;
@@ -209,7 +227,7 @@ async function refresh() {
     notice(
       data.realtime_stale
         ? "Realtime údaje nejsou čerstvé. Odjezdy jsou podle jízdního řádu."
-        : "Živá tabule · obnova každých 30 sekund. Značka „Poloha“ otevře mapu vozidla.",
+        : "Živá tabule · obnova každých 30 sekund. Kliknutím na směr nebo stanoviště nastavíte filtr, tlačítkem „Poloha“ otevřete mapu.",
     );
   } catch (e) {
     if (seq === boardSequence) {
@@ -255,16 +273,12 @@ function renderBoard() {
     };
     cell(d.line, "route");
     const dest = cell("");
-    const button = document.createElement("button");
-    button.className = "trip-link";
-    button.dataset.key = `${d.trip_id}/${d.service_date}/${d.stop_sequence}`;
-    button.textContent = d.destination || "Detail spoje";
-    button.addEventListener("click", () => showTrip(d));
-    dest.append(button);
+    const key = `${d.trip_id}/${d.service_date}/${d.stop_sequence}`;
+    filterLink(dest, "direction", d.destination, d.destination || "—", key);
     if (d.has_vehicle_position) {
       const position = document.createElement("button");
       position.className = "position-link";
-      position.dataset.key = `${button.dataset.key}/map`;
+      position.dataset.key = `${key}/map`;
       position.title = "Zobrazit aktuální polohu vozidla na mapě";
       position.setAttribute(
         "aria-label",
@@ -279,7 +293,8 @@ function renderBoard() {
     pastLabel.className = "past-label";
     dest.append(pastLabel);
     dest.append(vehicleFeatures(d));
-    cell(d.platform || "—", "platform-col");
+    const platform = cell("", "platform-col");
+    filterLink(platform, "platform", d.platform ? d.stop_id : null, d.platform || "—", key);
     const time = cell("");
     const strong = document.createElement("span");
     strong.className = "time";

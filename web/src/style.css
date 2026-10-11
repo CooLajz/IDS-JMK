@@ -281,7 +281,7 @@ tr:nth-child(even) {
   font-size: 21px;
   font-weight: 750;
 }
-.trip-link {
+.filter-link {
   padding: 3px 0;
   border: 0;
   border-radius: 0;
@@ -290,7 +290,7 @@ tr:nth-child(even) {
   font-weight: 500;
   font-size: 16px;
 }
-.trip-link:hover {
+.filter-link:hover {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
@@ -518,7 +518,7 @@ body:fullscreen {
   .minutes {
     font-size: 18px;
   }
-  .trip-link {
+  .filter-link {
     font-size: 14px;
   }
   td small {
