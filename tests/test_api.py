@@ -547,3 +547,42 @@ def test_trip_current_stop_includes_its_own_delay(timetable):
     current = rt.trip_vehicles("T", stops, now.date(), now.timestamp())[0]["current_stop"]
     assert current["delay_seconds"] == 180
     assert current["delay_source"] == "vehicle_estimate"
+
+
+@pytest.mark.parametrize("raw, mode", [(0, "tram"), (2, "rail"), (3, "bus"), (11, "trolleybus"),
+                                      (100, "rail"), (109, "rail"), (700, "bus"), (714, "bus"),
+                                      (800, "trolleybus"), (900, "tram"), (9999, "unknown")])
+def test_transport_type_in_board_previous_and_trip(timetable, raw, mode):
+    import sqlite3
+
+    with sqlite3.connect(timetable.path) as db:
+        db.execute("UPDATE routes SET type=?", (raw,))
+    result = timetable.departures("A", Realtime(), at("2026-10-11T14:01:00"), previous_limit=1)
+    assert result["departures"] and result["previous_departures"]
+    for row in result["departures"] + result["previous_departures"]:
+        assert (row["route_type"], row["transport_mode"]) == (raw, mode)
+    trip = timetable.trip("T", at("2026-10-11").date())
+    assert (trip["route_type"], trip["transport_mode"]) == (raw, mode)
+
+
+def test_transport_fields_survive_api_serialization(tmp_path, monkeypatch):
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return at("2026-10-11T13:55:00").astimezone(tz)
+
+    monkeypatch.setattr("api.main.datetime", FixedDatetime)
+    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=False))
+    with TestClient(app) as client:
+        app.state.timetable.import_zip(archive(tmp_path / "feed.zip"))
+        board_response = client.get("/api/v1/stops/P/departures?previous_limit=1").json()
+        rows = board_response["departures"] + board_response["previous_departures"]
+        assert rows
+        for row in rows:
+            assert row["route_type"] == 3
+            assert row["transport_mode"] == "bus"
+        trip = client.get("/api/v1/trips/T?service_date=2026-10-11").json()
+        assert trip["route_type"] == 3 and trip["transport_mode"] == "bus"
+        schema = client.get("/openapi.json").json()["components"]["schemas"]["Departure"]
+        assert "route_type" in schema["required"]
+        assert "transport_mode" in schema["required"]

@@ -43,30 +43,27 @@ const styles = `
   .heading { min-width:0; }
   h2 { margin:0; font-size:20px; line-height:1.3; font-weight:650; overflow-wrap:anywhere; }
   .eyebrow { font-size:10px; letter-spacing:1.7px; font-weight:700; color:var(--secondary-text-color, #657267); margin-bottom:4px; }
-  .labels, .row { display:grid; grid-template-columns:44px minmax(0, 1fr) 58px 52px; column-gap:10px; align-items:center; }
-  .labels { padding:0 16px 9px; font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--secondary-text-color, #657267); }
+  .labels, .row { display:grid; grid-template-columns:40px minmax(0, 1fr) 46px 44px 48px; column-gap:8px; align-items:center; }
+  .labels { padding:0 16px 9px; font-size:9px; text-transform:uppercase; letter-spacing:.2px; color:var(--secondary-text-color, #657267); }
+  .labels span { white-space:nowrap; }
   .labels span:nth-child(n+3) { text-align:center; }
   .rows { list-style:none; padding:0; margin:0; }
-  .row { grid-template-rows:32px minmax(16px, auto); padding:10px 16px; border-top:1px solid var(--divider-color, #e6eae6); }
+  .row { min-height:68px; padding:12px 16px; border-top:1px solid var(--divider-color, #e6eae6); }
   .row.first { background:color-mix(in srgb, var(--primary-color, #447b32) 5%, transparent); }
-  .line { grid-column:1; grid-row:1; padding:5px 2px; text-align:center; border-radius:8px; font-weight:800; font-size:16px; line-height:22px; background:color-mix(in srgb, var(--primary-color, #447b32) 13%, transparent); color:var(--primary-text-color, #202c24); overflow:hidden; }
-  .destination { grid-column:2; grid-row:1; display:flex; gap:5px; align-items:center; min-width:0; font-size:14px; font-weight:600; line-height:20px; }
-  .destination-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
-  .amenities { display:flex; flex-shrink:0; gap:3px; color:var(--secondary-text-color, #657267); }
-  .amenities ha-icon { width:15px; height:15px; --mdc-icon-size:15px; }
-  .destination-block { display:contents; }
-  .modern .destination-block { display:block; grid-column:2; grid-row:1 / 3; align-self:start; padding-top:6px; min-width:0; }
-  .modern .destination { display:flex; align-items:flex-start; }
-  .modern .destination-text { white-space:normal; overflow-wrap:anywhere; }
-  .modern .amenities { padding-top:2px; }
-  .modern .meta { display:block; padding-top:2px; }
-  .meta { grid-column:2; grid-row:2; color:var(--secondary-text-color, #657267); font-size:11px; line-height:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .scheduled { grid-column:3; grid-row:1; text-align:center; font-size:15px; line-height:20px; font-weight:650; font-variant-numeric:tabular-nums; }
-  .delay { grid-column:3; grid-row:2; text-align:center; font-size:11px; line-height:16px; color:var(--warning-color, #986200); white-space:nowrap; }
-  .countdown { grid-column:4; grid-row:1; display:grid; place-items:center; height:32px; border-radius:8px; font-size:25px; line-height:1; font-weight:750; font-variant-numeric:tabular-nums; }
-  .countdown.word { font-size:11px; }
+  .line { display:grid; place-items:center; height:32px; padding:0 2px; border-radius:8px; font-weight:800; font-size:16px; line-height:20px; background:color-mix(in srgb, var(--primary-color, #447b32) 13%, transparent); color:var(--primary-text-color, #202c24); overflow:hidden; }
+  .destination-block { display:flex; align-items:center; gap:5px; min-width:0; }
+  .destination-text { min-width:0; overflow-wrap:anywhere; font-size:14px; font-weight:600; line-height:20px; }
+  .amenities { display:inline-flex; align-items:center; flex-shrink:0; gap:3px; height:20px; color:var(--secondary-text-color, #657267); }
+  .amenities ha-icon { display:flex; align-items:center; justify-content:center; width:16px; height:16px; line-height:0; --mdc-icon-size:16px; }
+  .meta { flex-shrink:0; max-width:40px; padding:1px 3px; border-radius:4px; background:color-mix(in srgb, var(--secondary-text-color, #657267) 10%, transparent); color:var(--secondary-text-color, #657267); font-size:10px; line-height:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .modern .destination-block { display:block; line-height:20px; }
+  .modern .amenities, .modern .meta { margin-left:5px; vertical-align:middle; }
+  .modern .meta { display:inline-block; }
+  .scheduled { text-align:center; font-size:15px; line-height:24px; font-weight:650; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .delay { text-align:center; font-size:12px; line-height:24px; color:var(--warning-color, #986200); white-space:nowrap; }
+  .countdown { display:grid; place-items:center; height:34px; border-radius:8px; font-size:25px; line-height:1; font-weight:750; font-variant-numeric:tabular-nums; }
+  .countdown.word { font-size:10px; }
   .countdown.upcoming { background:#d9f6df; color:#155d2b; }
-  .unit { grid-column:4; grid-row:2; text-align:center; font-size:10px; line-height:16px; color:var(--secondary-text-color, #657267); }
   .departed { opacity:.55; }
   .cancelled .destination-text, .cancelled .scheduled { text-decoration:line-through; }
   footer { display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; justify-content:space-between; padding:12px 20px; border-top:1px solid var(--divider-color, #e6eae6); font-size:10px; color:var(--secondary-text-color, #657267); }
@@ -79,21 +76,22 @@ const styles = `
   .compact .badge ha-icon { width:19px; height:19px; --mdc-icon-size:19px; }
   .compact h2 { font-size:16px; }
   .compact .eyebrow { display:none; }
-  .compact .labels, .compact .row { grid-template-columns:34px minmax(0,1fr) 54px 46px; column-gap:8px; }
-  .compact .labels { padding:0 12px 5px; font-size:9px; }
-  .compact .row { grid-template-rows:24px auto; padding:5px 12px; }
-  .compact .line { padding:2px; border-radius:5px; font-size:14px; line-height:20px; }
-  .compact .destination { font-size:13px; }
-  .compact .scheduled { font-size:14px; }
+  .compact .labels, .compact .row { grid-template-columns:30px minmax(0,1fr) 42px 38px 42px; column-gap:6px; }
+  .compact .labels { padding:0 10px 5px; font-size:8px; }
+  .compact .row { height:36px; min-height:36px; padding:5px 10px; grid-template-rows:25px; }
+  .compact .line { border-radius:5px; font-size:14px; height:24px; }
+  .compact .destination-block { gap:4px; height:24px; overflow:hidden; }
+  .compact .destination-text { font-size:13px; line-height:20px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .compact .meta { font-size:9px; padding:0 2px; max-width:32px; }
+  .compact .scheduled { font-size:13px; }
+  .compact .delay { font-size:11px; }
   .compact .countdown { font-size:20px; height:24px; border-radius:5px; }
-  .compact .countdown.word { font-size:10px; }
-  .compact .unit { display:none; }
-  .compact .meta, .compact .delay { font-size:10px; line-height:13px; }
-  .compact footer { padding:6px 12px; font-size:9px; }
+  .compact .countdown.word { font-size:9px; }
+  .compact footer { padding:6px 10px; font-size:9px; }
   @media (max-width:380px) {
-    header { padding:16px 12px; } .labels { padding:0 12px 9px; }
-    .row { padding:10px 12px; } .labels, .row { grid-template-columns:36px minmax(0,1fr) 54px 46px; column-gap:7px; }
-    footer { padding:10px 12px; } h2 { font-size:18px; } .countdown { font-size:23px; }
+    header { padding:16px 10px; } .labels { padding:0 10px 9px; }
+    .row { padding:12px 10px; } .labels, .row { grid-template-columns:32px minmax(0,1fr) 42px 38px 42px; column-gap:6px; }
+    footer { padding:10px; } h2 { font-size:18px; } .countdown { font-size:23px; }
   }
 `;
 
@@ -151,18 +149,17 @@ class IDSJMKDeparturesCard extends HTMLElement {
     } else if (!rows.length) {
       body = '<div class="message" role="status">Pro zvolené filtry nejsou dostupné žádné odjezdy.</div>';
     } else {
-      body = `<div class="labels" aria-hidden="true"><span>Linka</span><span>Směr</span><span>Odjezd</span><span>${this.config.layout === "compact" ? "Za (min)" : "Za"}</span></div><ol class="rows">${rows.map((row, index) => {
+      body = `<div class="labels" aria-hidden="true"><span>Linka</span><span>Směr</span><span>Odjezd</span><span title="Odhadované zpoždění v minutách">Zpož. min</span><span>Za (min)</span></div><ol class="rows">${rows.map((row, index) => {
         const view = departureView(row);
         const amenities = this.config.show_accessibility ?
           `${row.wheelchair_accessible === true ? icon("wheelchair-accessibility", "Podle jízdního řádu: přístupné vozíčkářům") : ""}${row.bikes_allowed === true ? icon("bicycle", "Podle jízdního řádu: přeprava kol") : ""}` : "";
         const upcoming = !stale && isUpcoming(row, this.config.highlight_minutes);
         return `<li class="row ${index === 0 ? "first" : ""} ${view.departed ? "departed" : ""} ${row.cancelled ? "cancelled" : ""}">
           <span class="line" aria-label="Linka ${escape(row.line)}">${escape(row.line)}</span>
-          <div class="destination-block"><div class="destination"><span class="destination-text" title="${escape(row.destination)}">${escape(row.destination)}</span>${amenities ? `<span class="amenities">${amenities}</span>` : ""}</div>${this.config.show_platform && row.platform ? `<span class="meta" title="Stanoviště ${escape(row.platform)}">Stan. ${escape(row.platform)}</span>` : ""}</div>
+          <div class="destination-block"><span class="destination-text" title="${escape(row.destination)}">${escape(row.destination)}</span>${amenities ? `<span class="amenities">${amenities}</span>` : ""}${this.config.show_platform && row.platform ? `<span class="meta" title="Stanoviště ${escape(row.platform)}" aria-label="Stanoviště ${escape(row.platform)}">${escape(row.platform)}</span>` : ""}</div>
           <span class="scheduled" title="Odjezd podle jízdního řádu">${escape(view.scheduled)}</span>
+          <span class="delay" ${view.delay && !row.cancelled ? 'title="Odhadované zpoždění v minutách"' : 'aria-hidden="true"'}>${view.delay && !row.cancelled ? escape(view.delay.replace(" min", "")) : ""}</span>
           <span class="countdown ${view.unit ? "" : "word"} ${upcoming ? "upcoming" : ""}" title="${row.cancelled ? "Spoj je zrušen" : upcoming ? "Blížící se odjezd včetně dostupného odhadu zpoždění" : "Čas do odjezdu včetně dostupného odhadu zpoždění"}">${escape(view.countdown)}</span>
-          ${view.delay && !row.cancelled ? `<span class="delay" title="Odhadované zpoždění">${escape(view.delay)}</span>` : ""}
-          ${view.unit ? `<span class="unit">${view.unit}</span>` : ""}
         </li>`;
       }).join("")}</ol>`;
     }

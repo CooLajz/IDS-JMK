@@ -2,7 +2,7 @@
 
 Vlastní server pro jízdní řády a realtime data IDS JMK. Poskytuje JSON API pro odjezdové displeje, weby a Home Assistant. Volitelný web nabízí vyhledávání zastávek, odjezdovou tabuli a detail spoje s polohou vozidla.
 
-**Verze 0.1.1.** Instalační Compose soubory pro Portainer a ZIP integrace Home Assistantu jsou součástí [vydání na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API a webu se vydávají samostatně pro Linux AMD64 a ARM64.
+**Verze 0.1.2.** Instalační Compose soubory pro Portainer a ZIP integrace Home Assistantu jsou součástí [vydání na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API a webu se vydávají samostatně pro Linux AMD64 a ARM64.
 
 ## Součásti
 
@@ -10,7 +10,7 @@ Vlastní server pro jízdní řády a realtime data IDS JMK. Poskytuje JSON API 
 | --- | --- |
 | API | Import GTFS do SQLite, automatické aktualizace, vyhledávání zastávek a stanovišť, odjezdy a vlastní odhady zpoždění, polohy vozidel, OpenAPI |
 | Web | Vyhledávání bez diakritiky, filtr směru/linky/stanoviště, AJAX obnova a průběžný odpočet, poslední minulý odjezd, sdílitelná URL, detail spoje, značka a mapa čerstvé polohy, konfigurace pro HA |
-| Home Assistant | Vlastní integrace s průvodcem: adresa serveru → vyhledání zastávky → stanoviště, linka a směr. Jeden senzor se seznamem odjezdů; ve větvi `main` také vlastní karta dashboardu s vizuálním editorem |
+| Home Assistant | Vlastní integrace s průvodcem: adresa serveru → vyhledání zastávky → stanoviště, linka a směr. Jeden senzor se seznamem odjezdů; vlastní karta dashboardu s vizuálním editorem |
 
 API a web mají **samostatné Docker obrazy**. Web nic nestahuje z GTFS a nemá vlastní databázi. API funguje zcela bez webu. Komponenta Home Assistantu komunikuje pouze s API.
 
@@ -117,4 +117,4 @@ npm run build
 
 Testy používají malé syntetické GTFS archivy, nikoli síťové služby. Pokrývají import, zachování staré databáze, kalendáře a výjimky, časy po půlnoci, změny času, odhady a stáří realtime i odpovědi API.
 
-GitHub Actions ověřují Python testy, web, hassfest, oba Docker obrazy, první import, webovou proxy a zachování identity po restartu. Publikování obrazů je podmíněné úspěchem těchto kontrol. Samostatná testovací instalace byla ověřena za HTTPS reverse proxy; konfigurace a senzor integrace byly ověřeny v izolovaném Home Assistantu 2025.12.5. Vlastní karta z větve `main` byla ověřena i v dashboardu tohoto HA, v grafickém editoru a ve světlém i tmavém motivu na mobilní šířce. Konkrétní prostředí a fyzický displej si ověřte ve své instalaci.
+GitHub Actions ověřují Python testy, web, hassfest, oba Docker obrazy, první import, webovou proxy a zachování identity po restartu. Publikování obrazů je podmíněné úspěchem těchto kontrol. Samostatná testovací instalace byla ověřena za HTTPS reverse proxy; konfigurace a senzor integrace byly ověřeny v izolovaném Home Assistantu 2025.12.5. Vlastní karta byla ověřena i v dashboardu tohoto HA, v grafickém editoru a ve světlém i tmavém motivu na mobilní šířce. Konkrétní prostředí a fyzický displej si ověřte ve své instalaci.

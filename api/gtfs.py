@@ -16,6 +16,8 @@ from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from .transport import transport_mode
+
 TZ = ZoneInfo("Europe/Prague")
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 
@@ -313,7 +315,7 @@ class Timetable:
     def trip(self, trip_id, service_date):
         with self.connect() as db:
             r = db.execute(
-                """SELECT t.*,r.line FROM trips t JOIN routes r ON r.id=t.route_id
+                """SELECT t.*,r.line,r.type AS route_type FROM trips t JOIN routes r ON r.id=t.route_id
                               WHERE t.id=?""",
                 (trip_id,),
             ).fetchone()
@@ -322,6 +324,7 @@ class Timetable:
             origin = service_epoch(service_date)
             return {
                 **dict(r),
+                "transport_mode": transport_mode(r["route_type"]),
                 "wheelchair_accessible": {0: None, 1: True, 2: False}.get(r["wheelchair"]),
                 "bikes_allowed": {0: None, 1: True, 2: False}.get(r["bikes"]),
                 "service_date": service_date.isoformat(),
@@ -390,6 +393,8 @@ class Timetable:
                             "stop_id": row["stop_id"],
                             "stop_sequence": row["seq"],
                             "line": row["line"],
+                            "route_type": row["type"],
+                            "transport_mode": transport_mode(row["type"]),
                             "destination": row["headsign"],
                             "platform": row["platform"],
                             "scheduled_departure": iso(scheduled),

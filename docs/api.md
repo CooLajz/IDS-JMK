@@ -68,3 +68,34 @@ Volba **Sledovat vozidlo** je při otevření detailu vypnutá. Po zapnutí se m
 V detailu konkrétního provozního dne může `current_stop.status` mít hodnotu `before_departure`: před plánovaným začátkem jízdy je čerstvá poloha do 100 m od výchozí zastávky a realtime odkazuje na první nebo druhou zastávku. V tom případě se označí výchozí zastávka s `source: schedule_and_position` a popiskem „Před plánovaným odjezdem“. Jde o kombinaci plánu a polohy, nikoli potvrzení, že vozidlo stojí. Ostatní stavy mají `source: realtime`.
 
 V detailu spoje obsahuje `current_stop` také `delay_seconds` a `delay_source` (`vehicle_estimate`, `trip_update` nebo `null`). Odhad se počítá pro tuto konkrétní zastávku stejným postupem jako v odjezdové tabuli. Bez podkladů nebo před plánovaným začátkem jízdy zůstane neznámý. Web uvádí nenulové zpoždění u zvýrazněné zastávky; chybějící odhad ani nulu nezobrazuje.
+
+## Druh dopravy
+
+Každý řádek v `departures` i `previous_departures` a detail `/api/v1/trips/{trip_id}` obsahuje:
+
+```json
+{
+  "line": "8",
+  "route_type": 0,
+  "transport_mode": "tram"
+}
+```
+
+`route_type` zachovává původní číselnou hodnotu z `routes.txt`. `transport_mode` poskytuje stabilní název pro klienty, například HA nebo Živý obraz:
+
+| Základní GTFS kód | `transport_mode` | Druh dopravy |
+| --- | --- | --- |
+| 0 | `tram` | Šalina / lehká kolejová doprava |
+| 1 | `subway` | Metro |
+| 2 | `rail` | Vlak |
+| 3 | `bus` | Autobus |
+| 4 | `ferry` | Lodní doprava |
+| 5 | `cable_tram` | Pozemní pouliční dráha tažená lanem |
+| 6 | `aerial_lift` | Visutá lanovka |
+| 7 | `funicular` | Pozemní lanovka |
+| 11 | `trolleybus` | Trolejbus |
+| 12 | `monorail` | Jednokolejnicová dráha |
+
+Mapování vychází ze [specifikace GTFS](https://gtfs.org/documentation/schedule/reference/#routestxt). Podporované [rozšířené kódy](https://developers.google.com/transit/gtfs/reference/extended-route-types) se převádějí na stejná označení: železnice 100–117 a 400/403/404, autobusy 200–209 a 700–716, trolejbusy 800, šaliny 900–906, metro 401/402, monorail 405, lodní doprava 1000/1200, visuté lanovky 1300–1302 a 1304–1307, pozemní lanovky 1400. Neznámé kódy vracejí `transport_mode: "unknown"`; původní `route_type` zůstane zachován.
+
+Jde o druh dopravy linky podle jízdního řádu, nikoli ověření aktuálně nasazeného vozidla či jeho modelu. Typ se neodhaduje z čísla linky ani polohy. Integrace HA předává tato pole v atributech odjezdů beze změny. Pro nová pole aktualizujte API server na verzi 0.1.2 nebo novější; samotná aktualizace HA integrace starší server nerozšíří.

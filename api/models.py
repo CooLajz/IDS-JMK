@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from .transport import TransportMode
+
 
 class StopSummary(BaseModel):
     id: str
@@ -16,6 +18,10 @@ class Departure(BaseModel):
     stop_id: str
     stop_sequence: int
     line: str
+    route_type: int = Field(description="Původní GTFS route_type z routes.txt; druh dopravy dané linky.")
+    transport_mode: TransportMode = Field(
+        description="Normalizovaný druh dopravy, např. tram (šalina), bus, rail nebo trolleybus."
+    )
     destination: str
     platform: str
     scheduled_departure: str = Field(description="ISO 8601 včetně offsetu Europe/Prague.")

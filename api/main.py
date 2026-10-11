@@ -90,7 +90,7 @@ def create_app(settings=None):
 
     app = FastAPI(
         title="IDS JMK API",
-        version="0.1.1",
+        version="0.1.2",
         lifespan=lifespan,
         description="Odjezdy a polohy vozidel. Vlastní odhady jsou označeny vehicle_estimate.",
     )
