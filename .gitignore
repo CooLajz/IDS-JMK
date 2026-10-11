@@ -1,0 +1,30 @@
+# Lokální konfigurace a tajné údaje
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Stažená a provozní data
+/data/
+/cache/
+/backups/
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+*.log
+gtfs.zip
+gtfsReal.dat
+
+# Vývojové prostředí a sestavení
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+dist/
+coverage/
+.idea/
+.vscode/
