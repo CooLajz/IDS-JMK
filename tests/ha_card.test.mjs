@@ -9,7 +9,7 @@ globalThis.HTMLElement = class {
 globalThis.customElements = { get: (name) => elements.get(name), define: (name, value) => elements.set(name, value) };
 globalThis.window = {};
 const source = await readFile(new URL('../custom_components/ids_jmk/www/ids-jmk-departures-card.js', import.meta.url));
-const { departureView, isUpcoming } = await import(`data:text/javascript;base64,${source.toString('base64')}`);
+const { departureView, isUpcoming, transportIcon } = await import(`data:text/javascript;base64,${source.toString('base64')}`);
 const now = Date.parse('2026-10-11T18:00:00+02:00');
 const row = { scheduled_departure: '2026-10-11T18:03:00+02:00', departure_time: '2026-10-11T18:05:00+02:00', delay_seconds: 120 };
 
@@ -74,4 +74,16 @@ test('both layouts are selectable and stale rows are never highlighted', () => {
   assert.ok(!/class="countdown [^"]*upcoming/.test(render({ state: '2', attributes: { ...fresh, realtime_stale: true } })));
   assert.throws(() => render(null, { layout: 'invalid' }), /Vyberte vzhled/);
   assert.throws(() => render(null, { highlight_minutes: -1 }), /Hranice zvýraznění/);
+});
+
+test('transport icons use known MDI names and can be hidden independently', () => {
+  for (const [mode, name] of [['tram','tram'],['bus','bus'],['rail','train'],['trolleybus','bus-electric']]) {
+    assert.equal(transportIcon(mode)[0], name);
+    const state = { state: '5', attributes: { ...attributes, departures: [{ ...row, transport_mode: mode, bikes_allowed: true }] } };
+    assert.ok(render(state).includes(`icon="mdi:${name}"`));
+    const hidden = render(state, { show_transport_icon: false });
+    assert.ok(!hidden.includes(`icon="mdi:${name}"`));
+    assert.ok(hidden.includes('icon="mdi:bicycle"'));
+  }
+  for (const mode of [undefined, 'unknown', 'toString', '<script>']) assert.equal(transportIcon(mode), null);
 });

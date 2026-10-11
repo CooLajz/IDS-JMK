@@ -614,14 +614,13 @@ body:fullscreen {
   display: inline-flex;
 }
 .amenity-icon svg {
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  stroke: none;
 }
+.route .filter-link { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.route .amenity-icon { flex-shrink:0; }
 
 .board-option {
   display: flex;

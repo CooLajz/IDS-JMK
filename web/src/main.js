@@ -1,5 +1,6 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { vehicleIcon, mdiIcon, mdiBicycle, mdiWheelchairAccessibility } from "./transport-icons.js";
 
 const $ = (id) => document.getElementById(id);
 let selected = null,
@@ -26,30 +27,28 @@ const timeText = (v) =>
     hour: "2-digit",
     minute: "2-digit",
   });
-function vehicleFeatures(d) {
+function vehicleFeatures(d, includeTransport = false) {
   const features = document.createElement("span");
   features.className = "trip-features";
+  if (includeTransport) {
+    const transport = vehicleIcon(d.transport_mode);
+    if (transport) features.append(transport);
+  }
   const icons = [
     [
       d.wheelchair_accessible,
       "Vozidlo přístupné vozíčkářům podle jízdního řádu",
-      '<circle cx="13" cy="4" r="2"/><path d="m12 7-1 7h6l3 6 2-1M12 10h6M8 10a6 6 0 1 0 6 9"/>',
+      mdiWheelchairAccessibility,
     ],
     [
       d.bikes_allowed,
       "Přeprava kol podle jízdního řádu",
-      '<circle cx="5" cy="17" r="4"/><circle cx="19" cy="17" r="4"/><path d="m5 17 5-9 5 9H5m5-9h7l2 9M8 5h4m3-1h3l2 4"/>',
+      mdiBicycle,
     ],
   ];
   for (const [available, label, drawing] of icons) {
     if (available !== true) continue;
-    const icon = document.createElement("span");
-    icon.className = "amenity-icon";
-    icon.title = label;
-    icon.setAttribute("role", "img");
-    icon.setAttribute("aria-label", label);
-    icon.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${drawing}</svg>`;
-    features.append(icon);
+    features.append(mdiIcon(drawing, label));
   }
   return features;
 }
@@ -273,7 +272,10 @@ function renderBoard() {
       return td;
     };
     const key = `${d.trip_id}/${d.service_date}/${d.stop_sequence}`;
-    filterLink(cell("", "route"), "line", d.line, d.line, key);
+    const route = cell("", "route");
+    filterLink(route, "line", d.line, d.line, key);
+    const transport = vehicleIcon(d.transport_mode);
+    if (transport) route.querySelector("button")?.prepend(transport);
     const dest = cell("");
     filterLink(dest, "direction", d.destination, d.destination || "—", key);
     if (d.has_vehicle_position) {
@@ -413,7 +415,7 @@ async function updateTrip() {
       `trips/${encodeURIComponent(d.trip_id)}?service_date=${d.service_date}`,
     );
     if (seq !== tripSequence || !$("detail").open) return;
-    $("detail-features").replaceChildren(vehicleFeatures(trip));
+    $("detail-features").replaceChildren(vehicleFeatures(trip, true));
     const vehicles = trip.vehicles.filter((v) => !v.stale && v.position);
     const stopProgress = (s) => vehicles.find((v) =>
       v.current_stop?.stop_sequence === s.seq && v.current_stop.stop_id === s.stop_id,

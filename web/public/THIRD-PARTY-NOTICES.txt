@@ -1,0 +1,8 @@
+Material Design Icons 7.4.47 / @mdi/js
+Copyright Pictogrammers and contributing icon authors.
+https://pictogrammers.com/library/mdi/
+https://github.com/Templarian/MaterialDesign-JS
+
+The original icon paths are used without modification. The icon license is
+Apache-2.0 (see Apache-2.0.txt and MDI-LICENSE.txt). The surrounding project code
+remains licensed under MIT. No Pictogrammers endorsement is implied.

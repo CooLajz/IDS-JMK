@@ -1,6 +1,6 @@
 /* IDS JMK dashboard card. No external dependencies or direct API requests. */
 const TYPE = "ids-jmk-departures-card";
-const DEFAULTS = { limit: 10, layout: "modern", highlight_minutes: 5, show_platform: true, show_accessibility: true };
+const DEFAULTS = { limit: 10, layout: "modern", highlight_minutes: 5, show_platform: true, show_accessibility: true, show_transport_icon: true };
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const time = (value) => {
@@ -10,6 +10,18 @@ const time = (value) => {
     : "—";
 };
 const icon = (name, title) => `<ha-icon icon="mdi:${name}" title="${escape(title)}" aria-label="${escape(title)}"></ha-icon>`;
+
+// Original Material Design Icons by Pictogrammers, rendered by Home Assistant.
+const TRANSPORT_ICONS = {
+  tram: ["tram", "Šalina"], bus: ["bus", "Autobus"], rail: ["train", "Vlak"],
+  trolleybus: ["bus-electric", "Trolejbus"], subway: ["subway-variant", "Metro"],
+  ferry: ["ferry", "Lodní doprava"], aerial_lift: ["gondola", "Visutá lanovka"],
+  cable_tram: ["tram", "Dráha tažená lanem"], funicular: ["train", "Pozemní lanovka"],
+  monorail: ["train", "Jednokolejnicová dráha"],
+};
+export function transportIcon(mode) {
+  return Object.hasOwn(TRANSPORT_ICONS, mode) ? TRANSPORT_ICONS[mode] : null;
+}
 
 // Effective departure already includes the delay. Never add it a second time.
 export function departureView(row, now = Date.now()) {
@@ -43,14 +55,18 @@ const styles = `
   .heading { min-width:0; }
   h2 { margin:0; font-size:20px; line-height:1.3; font-weight:650; overflow-wrap:anywhere; }
   .eyebrow { font-size:10px; letter-spacing:1.7px; font-weight:700; color:var(--secondary-text-color, #657267); margin-bottom:4px; }
-  .labels, .row { display:grid; grid-template-columns:40px minmax(0, 1fr) 46px 44px 48px; column-gap:8px; align-items:center; }
+  .labels, .row { display:grid; grid-template-columns:var(--line-width, 40px) minmax(0, 1fr) 46px 44px 48px; column-gap:8px; align-items:center; }
   .labels { padding:0 16px 9px; font-size:9px; text-transform:uppercase; letter-spacing:.2px; color:var(--secondary-text-color, #657267); }
   .labels span { white-space:nowrap; }
   .labels span:nth-child(n+3) { text-align:center; }
   .rows { list-style:none; padding:0; margin:0; }
   .row { min-height:68px; padding:12px 16px; border-top:1px solid var(--divider-color, #e6eae6); }
   .row.first { background:color-mix(in srgb, var(--primary-color, #447b32) 5%, transparent); }
-  .line { display:grid; place-items:center; height:32px; padding:0 2px; border-radius:8px; font-weight:800; font-size:16px; line-height:20px; background:color-mix(in srgb, var(--primary-color, #447b32) 13%, transparent); color:var(--primary-text-color, #202c24); overflow:hidden; }
+  .with-transport { --line-width:68px; }
+  .compact .with-transport { --line-width:60px; }
+  .line ha-icon { display:flex; width:20px; height:20px; --mdc-icon-size:20px; flex-shrink:0; }
+  .compact .line ha-icon { width:18px; height:18px; --mdc-icon-size:18px; }
+  .line { display:flex; align-items:center; justify-content:center; gap:4px; height:32px; padding:0 2px; border-radius:8px; font-weight:800; font-size:16px; line-height:20px; background:color-mix(in srgb, var(--primary-color, #447b32) 13%, transparent); color:var(--primary-text-color, #202c24); overflow:hidden; }
   .destination-block { display:flex; align-items:center; gap:5px; min-width:0; }
   .destination-text { min-width:0; overflow-wrap:anywhere; font-size:14px; font-weight:600; line-height:20px; }
   .amenities { display:inline-flex; align-items:center; flex-shrink:0; gap:3px; height:20px; color:var(--secondary-text-color, #657267); }
@@ -76,7 +92,7 @@ const styles = `
   .compact .badge ha-icon { width:19px; height:19px; --mdc-icon-size:19px; }
   .compact h2 { font-size:16px; }
   .compact .eyebrow { display:none; }
-  .compact .labels, .compact .row { grid-template-columns:30px minmax(0,1fr) 42px 38px 42px; column-gap:6px; }
+  .compact .labels, .compact .row { grid-template-columns:var(--line-width, 30px) minmax(0,1fr) 42px 38px 42px; column-gap:6px; }
   .compact .labels { padding:0 10px 5px; font-size:8px; }
   .compact .row { height:36px; min-height:36px; padding:5px 10px; grid-template-rows:25px; }
   .compact .line { border-radius:5px; font-size:14px; height:24px; }
@@ -90,7 +106,7 @@ const styles = `
   .compact footer { padding:6px 10px; font-size:9px; }
   @media (max-width:380px) {
     header { padding:16px 10px; } .labels { padding:0 10px 9px; }
-    .row { padding:12px 10px; } .labels, .row { grid-template-columns:32px minmax(0,1fr) 42px 38px 42px; column-gap:6px; }
+    .row { padding:12px 10px; } .labels, .row { grid-template-columns:var(--line-width, 32px) minmax(0,1fr) 42px 38px 42px; column-gap:6px; }
     footer { padding:10px; } h2 { font-size:18px; } .countdown { font-size:23px; }
   }
 `;
@@ -149,13 +165,14 @@ class IDSJMKDeparturesCard extends HTMLElement {
     } else if (!rows.length) {
       body = '<div class="message" role="status">Pro zvolené filtry nejsou dostupné žádné odjezdy.</div>';
     } else {
-      body = `<div class="labels" aria-hidden="true"><span>Linka</span><span>Směr</span><span>Odjezd</span><span title="Odhadované zpoždění v minutách">Zpož. min</span><span>Za (min)</span></div><ol class="rows">${rows.map((row, index) => {
+      body = `<div class="labels ${this.config.show_transport_icon ? "with-transport" : ""}" aria-hidden="true"><span>Linka</span><span>Směr</span><span>Odjezd</span><span title="Odhadované zpoždění v minutách">Zpož. min</span><span>Za (min)</span></div><ol class="rows">${rows.map((row, index) => {
         const view = departureView(row);
+        const transport = this.config.show_transport_icon ? transportIcon(row.transport_mode) : null;
         const amenities = this.config.show_accessibility ?
           `${row.wheelchair_accessible === true ? icon("wheelchair-accessibility", "Podle jízdního řádu: přístupné vozíčkářům") : ""}${row.bikes_allowed === true ? icon("bicycle", "Podle jízdního řádu: přeprava kol") : ""}` : "";
         const upcoming = !stale && isUpcoming(row, this.config.highlight_minutes);
-        return `<li class="row ${index === 0 ? "first" : ""} ${view.departed ? "departed" : ""} ${row.cancelled ? "cancelled" : ""}">
-          <span class="line" aria-label="Linka ${escape(row.line)}">${escape(row.line)}</span>
+        return `<li class="row ${this.config.show_transport_icon ? "with-transport" : ""} ${index === 0 ? "first" : ""} ${view.departed ? "departed" : ""} ${row.cancelled ? "cancelled" : ""}">
+          <span class="line" aria-label="Linka ${escape(row.line)}">${transport ? icon(...transport) : ""}<span>${escape(row.line)}</span></span>
           <div class="destination-block"><span class="destination-text" title="${escape(row.destination)}">${escape(row.destination)}</span>${amenities ? `<span class="amenities">${amenities}</span>` : ""}${this.config.show_platform && row.platform ? `<span class="meta" title="Stanoviště ${escape(row.platform)}" aria-label="Stanoviště ${escape(row.platform)}">${escape(row.platform)}</span>` : ""}</div>
           <span class="scheduled" title="Odjezd podle jízdního řádu">${escape(view.scheduled)}</span>
           <span class="delay" ${view.delay && !row.cancelled ? 'title="Odhadované zpoždění v minutách"' : 'aria-hidden="true"'}>${view.delay && !row.cancelled ? escape(view.delay.replace(" min", "")) : ""}</span>
@@ -190,10 +207,11 @@ class IDSJMKDeparturesEditor extends HTMLElement {
         { name: "layout", required: true, selector: { select: { mode: "dropdown", options: [{ value: "modern", label: "Moderní" }, { value: "compact", label: "Kompaktní" }] } } },
         { name: "highlight_minutes", required: true, selector: { number: { min: 0, max: 60, mode: "box", unit_of_measurement: "min" } } },
         { name: "limit", required: true, selector: { number: { min: 1, max: 50, mode: "box" } } },
+        { name: "show_transport_icon", selector: { boolean: {} } },
         { name: "show_platform", selector: { boolean: {} } },
         { name: "show_accessibility", selector: { boolean: {} } },
       ];
-      const labels = { entity: "Senzor odjezdové tabule", title: "Vlastní nadpis (volitelné)", layout: "Vzhled karty", highlight_minutes: "Zvýraznit odjezd do (0 = vypnuto)", limit: "Počet zobrazených odjezdů", show_platform: "Zobrazit stanoviště", show_accessibility: "Zobrazit ikonky vybavení podle jízdního řádu" };
+      const labels = { entity: "Senzor odjezdové tabule", title: "Vlastní nadpis (volitelné)", layout: "Vzhled karty", highlight_minutes: "Zvýraznit odjezd do (0 = vypnuto)", limit: "Počet zobrazených odjezdů", show_transport_icon: "Zobrazit ikonu druhu dopravy", show_platform: "Zobrazit stanoviště", show_accessibility: "Zobrazit ikonky vybavení podle jízdního řádu" };
       this.form.computeLabel = (schema) => labels[schema.name];
       this.form.addEventListener("value-changed", (event) => {
         event.stopPropagation();

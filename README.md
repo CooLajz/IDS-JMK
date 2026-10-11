@@ -118,3 +118,5 @@ npm run build
 Testy používají malé syntetické GTFS archivy, nikoli síťové služby. Pokrývají import, zachování staré databáze, kalendáře a výjimky, časy po půlnoci, změny času, odhady a stáří realtime i odpovědi API.
 
 GitHub Actions ověřují Python testy, web, hassfest, oba Docker obrazy, první import, webovou proxy a zachování identity po restartu. Publikování obrazů je podmíněné úspěchem těchto kontrol. Samostatná testovací instalace byla ověřena za HTTPS reverse proxy; konfigurace a senzor integrace byly ověřeny v izolovaném Home Assistantu 2025.12.5. Vlastní karta byla ověřena i v dashboardu tohoto HA, v grafickém editoru a ve světlém i tmavém motivu na mobilní šířce. Konkrétní prostředí a fyzický displej si ověřte ve své instalaci.
+
+Piktogramy dopravy a vybavení pocházejí z [Material Design Icons od Pictogrammers](https://pictogrammers.com/library/mdi/). Web obsahuje původní SVG cesty z balíčku `@mdi/js` 7.4.47, HA využívá vestavěnou sadu MDI. Licenční oznámení webu je přiloženo v `web/public/THIRD-PARTY-NOTICES.txt`.
