@@ -459,3 +459,53 @@ def test_source_outage_keeps_imported_schedule(tmp_path, monkeypatch):
         assert status["ready"] and status["realtime"]["stale"]
         assert client.get("/health/ready").status_code == 200
         assert client.get("/api/v1/stops?query=nadrazi").json()["stops"][0]["id"] == "P"
+
+
+@pytest.mark.parametrize("status,label", [
+    (pb.VehiclePosition.IN_TRANSIT_TO, "in_transit_to"),
+    (pb.VehiclePosition.INCOMING_AT, "incoming_at"),
+    (pb.VehiclePosition.STOPPED_AT, "stopped_at"),
+])
+def test_vehicle_reports_unique_stop_without_sequence(timetable, status, label):
+    now = at("2026-10-11T14:03:00")
+    rt = Realtime()
+    rt.snapshot = vehicle_rt(now, stop="B", status=status)
+    rt.snapshot.vehicles[("T", "")]["sequence"] = None
+    stops = timetable.trip("T", now.date())["stops"]
+    vehicle = rt.trip_vehicles("T", stops, now.date(), now.timestamp())[0]
+    assert vehicle["current_stop"] == {"stop_id": "B", "stop_sequence": 2, "status": label}
+
+
+@pytest.mark.parametrize("case", ["repeated", "conflicting", "missing", "stale", "no_position"])
+def test_vehicle_stop_is_not_guessed(timetable, case):
+    now = at("2026-10-11T14:03:00")
+    rt = Realtime()
+    rt.snapshot = vehicle_rt(now)
+    v = rt.snapshot.vehicles[("T", "")]
+    stops = timetable.trip("T", now.date())["stops"]
+    if case == "repeated":
+        v["sequence"] = None
+        stops.append({**stops[0], "seq": 4})
+    elif case == "conflicting":
+        v["sequence"] = 2  # Stop ID still reports A, sequence 2 belongs to B.
+    elif case == "missing":
+        v.update(sequence=None, stop_id="")
+    elif case == "stale":
+        v["timestamp"] -= 181
+    else:
+        v["position"] = None
+    assert rt.vehicle_list("T", stops, now.date(), now=now.timestamp())[0]["current_stop"] is None
+
+
+def test_vehicle_stop_sequence_disambiguates_loop_and_updates(timetable):
+    now = at("2026-10-11T14:03:00")
+    rt = Realtime()
+    rt.snapshot = vehicle_rt(now, status=pb.VehiclePosition.IN_TRANSIT_TO)
+    v = rt.snapshot.vehicles[("T", "")]
+    stops = timetable.trip("T", now.date())["stops"]
+    stops.append({**stops[0], "seq": 4})
+    v["sequence"] = 4
+    current = rt.vehicle_list("T", stops, now.date(), now=now.timestamp())[0]["current_stop"]
+    assert current["stop_sequence"] == 4
+    v.update(sequence=2, stop_id="B")
+    assert rt.vehicle_list("T", stops, now.date(), now=now.timestamp())[0]["current_stop"]["stop_id"] == "B"

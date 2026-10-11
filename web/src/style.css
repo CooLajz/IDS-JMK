@@ -396,6 +396,16 @@ dialog p {
   padding: 9px 0;
   color: var(--muted);
 }
+#trip-stops li.vehicle-stop {
+  color: #93c5fd;
+  font-weight: 700;
+}
+#trip-stops .vehicle-stop small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 400;
+}
 #trip-stops strong {
   color: #fff;
   font-variant-numeric: tabular-nums;

@@ -101,6 +101,29 @@ class Realtime:
             return []
         return self.vehicle_list(trip_id, stops, day, now=now)
 
+    @staticmethod
+    def current_stop(vehicle, stops):
+        """Resolve the reported stop occurrence; never guess repeated or conflicting stops."""
+        sequence, stop_id = vehicle.get("sequence"), vehicle.get("stop_id")
+        matches = [
+            s for s in (stops or [])
+            if (s.get("seq") == sequence if sequence is not None else
+                bool(stop_id) and s.get("normalized") == stop_id)
+        ]
+        if len(matches) != 1:
+            return None
+        stop = matches[0]
+        if stop_id and stop.get("normalized") != stop_id:
+            return None
+        status = {
+            pb.VehiclePosition.IN_TRANSIT_TO: "in_transit_to",
+            pb.VehiclePosition.INCOMING_AT: "incoming_at",
+            pb.VehiclePosition.STOPPED_AT: "stopped_at",
+        }.get(vehicle.get("status"))
+        if status is None:
+            return None
+        return {"stop_id": stop["stop_id"], "stop_sequence": stop["seq"], "status": status}
+
     def vehicle_list(self, trip_id=None, stops=None, service_date=None, stops_by_trip=None, now=None):
         snap = self.snapshot
         now = time.time() if now is None else now
@@ -118,6 +141,7 @@ class Realtime:
                 valid = min(distance(position, stop) for stop in trip_stops) <= 25_000
                 if not valid:
                     position = None
+            stale = not (self.fresh(snap.timestamp, now) and self.fresh(v["timestamp"], now))
             result.append(
                 {
                     "id": v["id"],
@@ -127,7 +151,8 @@ class Realtime:
                     "position_valid": valid,
                     "bearing": v["bearing"],
                     "updated_at": iso(v["timestamp"]),
-                    "stale": not (self.fresh(snap.timestamp, now) and self.fresh(v["timestamp"], now)),
+                    "stale": stale,
+                    "current_stop": self.current_stop(v, trip_stops) if not stale and position else None,
                 }
             )
         return result

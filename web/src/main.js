@@ -12,6 +12,7 @@ let selected = null,
   tripSequence = 0;
 let selectedTrip = null,
   vehicleLayer = null,
+  stopLayer = null,
   boardReceivedAt = 0,
   refreshTimer,
   nextRefreshAt = 0;
@@ -277,25 +278,29 @@ function renderBoard() {
     const time = cell("");
     const strong = document.createElement("span");
     strong.className = "time";
-    strong.textContent = timeText(d.departure_time);
+    strong.textContent = timeText(d.scheduled_departure);
+    strong.title = "Odjezd podle jízdního řádu";
     time.append(strong);
     const sub = document.createElement("small");
-    const date = new Date(d.departure_time).toLocaleDateString("cs-CZ", {
+    const date = new Date(d.scheduled_departure).toLocaleDateString("cs-CZ", {
       timeZone: "Europe/Prague",
     });
     const today = new Date(board.generated_at).toLocaleDateString("cs-CZ", {
       timeZone: "Europe/Prague",
     });
-    const prefix = date !== today ? `${date} · ` : "";
-    sub.textContent =
-      prefix +
-      (d.cancelled
-        ? "Zrušeno"
-        : d.source === "schedule"
-          ? "Jízdní řád"
-          : `${d.source === "vehicle_estimate" ? "Odhad" : "Realtime"} ${d.delay_seconds >= 0 ? "+" : ""}${Math.round(d.delay_seconds / 60)} min`);
+    const delayMinutes = Number.isFinite(d.delay_seconds)
+      ? Math.round(d.delay_seconds / 60)
+      : 0;
+    const label = d.cancelled
+      ? "Zrušeno"
+      : d.source === "schedule"
+        ? "Jízdní řád"
+        : delayMinutes !== 0
+          ? `${d.source === "vehicle_estimate" ? "Odhadované zpoždění" : "Zpoždění"} ${delayMinutes > 0 ? "+" : ""}${delayMinutes} min`
+          : "";
+    sub.textContent = [date !== today ? date : "", label].filter(Boolean).join(" · ");
     if (d.source !== "schedule") sub.className = "estimated";
-    time.append(sub);
+    if (sub.textContent) time.append(sub);
     cell(d.cancelled ? "—" : `${d.minutes_until} min`, "minutes");
     $("departures").append(tr);
   }
@@ -359,6 +364,7 @@ async function showTrip(d) {
     map = null;
   }
   vehicleLayer = null;
+  stopLayer = null;
   $("detail-title").textContent = `${d.line} · ${d.destination}`;
   $("detail-status").textContent = "Načítám spoj…";
   $("detail-features").textContent = "";
@@ -380,15 +386,32 @@ async function updateTrip() {
       value === true ? "ano" : value === false ? "ne" : "neuvedeno";
     $("detail-features").textContent =
       `Podle jízdního řádu: vozidlo přístupné vozíčkářům — ${featureText(trip.wheelchair_accessible)}; přeprava kol — ${featureText(trip.bikes_allowed)}. Údaje nepotvrzují aktuálně nasazený vůz, přístupnost nástupiště ani volnou kapacitu.`;
+    const vehicles = trip.vehicles.filter((v) => !v.stale && v.position);
+    const stopStatus = (s) => vehicles.find((v) =>
+      v.current_stop?.stop_sequence === s.seq && v.current_stop.stop_id === s.stop_id,
+    )?.current_stop.status;
+    const stopLabel = (status) => ({
+      in_transit_to: "Následující zastávka",
+      incoming_at: "Přijíždí do zastávky",
+      stopped_at: "Právě v zastávce",
+    })[status];
     $("trip-stops").replaceChildren();
     for (const s of trip.stops) {
       const li = document.createElement("li"),
         t = document.createElement("strong");
       t.textContent = timeText(s.scheduled_departure);
-      li.append(t, document.createTextNode(s.name));
+      const name = document.createElement("span");
+      name.textContent = s.name;
+      li.append(t, name);
+      const label = stopLabel(stopStatus(s));
+      if (label) {
+        li.classList.add("vehicle-stop");
+        const badge = document.createElement("small");
+        badge.textContent = label;
+        li.append(badge);
+      }
       $("trip-stops").append(li);
     }
-    const vehicles = trip.vehicles.filter((v) => !v.stale && v.position);
     $("detail-status").textContent = vehicles.length
       ? `Poloha aktualizována ${timeText(vehicles[0].updated_at)}. Časy zastávek jsou podle jízdního řádu.`
       : "Čerstvá poloha vozidla není dostupná. Zobrazené časy jsou podle jízdního řádu.";
@@ -402,13 +425,21 @@ async function updateTrip() {
           attribution:
             '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(map);
-        for (const s of trip.stops) {
-          const p = [s.lat, s.lon];
-          L.circleMarker(p, { radius: 4, color: "#647762", fillOpacity: 1 })
-            .addTo(map)
-            .bindTooltip(document.createTextNode(s.name));
-        }
+        stopLayer = L.layerGroup().addTo(map);
         vehicleLayer = L.layerGroup().addTo(map);
+      }
+      stopLayer.clearLayers();
+      for (const s of trip.stops) {
+        const label = stopLabel(stopStatus(s));
+        const tooltip = document.createElement(label ? "strong" : "span");
+        tooltip.textContent = s.name;
+        L.circleMarker([s.lat, s.lon], {
+          radius: label ? 7 : 4,
+          color: label ? "#1e40af" : "#647762",
+          fillColor: label ? "#60a5fa" : "#647762",
+          weight: label ? 3 : 2,
+          fillOpacity: 1,
+        }).addTo(stopLayer).bindTooltip(tooltip, { direction: "top" });
       }
       vehicleLayer.clearLayers();
       for (const v of vehicles) {

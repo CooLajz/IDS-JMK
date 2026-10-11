@@ -54,3 +54,9 @@ Jde o plánované vlastnosti vozidla/spoje, nikoli potvrzení výbavy právě na
 Tlačítko **API URL / JSON** pod tabulí vytvoří absolutní URL se stejnou zastávkou či stanovištěm, linkou, směrem, limitem a časovým rozsahem, jaké používá web. URL lze zkopírovat nebo otevřít v nové záložce. Každé načtení poskytne aktuální odpověď.
 
 Volba **Zobrazit poslední minulý odjezd** je na webu výchozí **vypnutá**. Po zapnutí přidá do API URL `previous_limit=1`; minulý spoj je pak v `previous_departures`, budoucí v `departures`. Volba se přenáší i ve sdílené URL webu jako `previous=1`. Bez tohoto parametru se stránka otevře jen s budoucími odjezdy.
+
+## Zastávka hlášená vozidlem
+
+Vozidla obsahují `current_stop` s `stop_id`, `stop_sequence` a `status`: `in_transit_to` znamená následující zastávku, `incoming_at` příjezd a `stopped_at` stání v uvedené zastávce. Nejde o konečnou zastávku spoje. Při stání neoznačujeme tuto zastávku za následující.
+
+Pořadí se ověřuje proti jízdnímu řádu. Pokud ho zdroj neposkytuje (aktuální feed KORDIS uvádí pouze ID zastávky), použije se ID jen při jednoznačném výskytu v trase. Při nejednoznačnosti, rozporu, zastaralé zprávě nebo chybějící použitelné poloze je `current_stop: null`. Web zvýrazňuje odpovídající zastávku v seznamu i na mapě a zvýraznění obnovuje s polohou vozidla.
