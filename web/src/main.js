@@ -14,6 +14,7 @@ let selectedTrip = null,
   vehicleLayer = null,
   stopLayer = null,
   followedStopKey = null,
+  followedVehiclePosition = null,
   boardReceivedAt = 0,
   refreshTimer,
   nextRefreshAt = 0;
@@ -361,6 +362,12 @@ document.addEventListener("fullscreenchange", () => {
     ? "Ukončit celou obrazovku"
     : "Celá obrazovka";
 });
+function centerOnVehicle() {
+  if (map && followedVehiclePosition && $("follow-vehicle").checked) {
+    map.panTo([followedVehiclePosition.lat, followedVehiclePosition.lon], { animate: false });
+  }
+}
+$("follow-vehicle").addEventListener("change", centerOnVehicle);
 async function showTrip(d) {
   selectedTrip = d;
   if (map) {
@@ -370,6 +377,9 @@ async function showTrip(d) {
   vehicleLayer = null;
   stopLayer = null;
   followedStopKey = null;
+  followedVehiclePosition = null;
+  $("follow-vehicle").checked = false;
+  $("map-controls").hidden = true;
   $("detail-title").textContent = `${d.line} · ${d.destination}`;
   $("detail-status").textContent = "Načítám spoj…";
   $("detail-features").textContent = "";
@@ -429,6 +439,8 @@ async function updateTrip() {
     } else {
       $("detail-status").textContent = "Poloha není dostupná";
     }
+    followedVehiclePosition = vehicles[0]?.position ?? null;
+    $("map-controls").hidden = !vehicles.length;
     $("map").hidden = !vehicles.length;
     if (vehicles.length) {
       const firstMap = !map;
@@ -475,7 +487,11 @@ async function updateTrip() {
         ];
         map.fitBounds(points, { padding: [25, 25], maxZoom: 15 });
       }
-      setTimeout(() => map?.invalidateSize(), 50);
+      centerOnVehicle();
+      setTimeout(() => {
+        map?.invalidateSize();
+        centerOnVehicle();
+      }, 50);
     }
     stopList.scrollTop = previousScroll;
     const followedStop = stopList.querySelector(".vehicle-stop");
@@ -489,6 +505,8 @@ async function updateTrip() {
   } catch (e) {
     if (seq === tripSequence) {
       $("detail-status").textContent = e.message;
+      followedVehiclePosition = null;
+      $("map-controls").hidden = true;
       $("map").hidden = true;
     }
   }
@@ -497,6 +515,7 @@ $("close-detail").addEventListener("click", () => $("detail").close());
 $("detail").addEventListener("close", () => {
   ++tripSequence;
   selectedTrip = null;
+  followedVehiclePosition = null;
   if (map) {
     map.remove();
     map = null;

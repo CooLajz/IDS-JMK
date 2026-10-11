@@ -417,6 +417,10 @@ dialog p {
   width: 24px;
   height: 24px;
 }
+#map-controls {
+  flex-shrink: 0;
+  margin: 14px 0 0;
+}
 #map {
   height: min(34vh, 300px);
   flex-shrink: 0;

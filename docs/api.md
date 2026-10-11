@@ -62,3 +62,5 @@ Vozidla obsahují `current_stop` s `stop_id`, `stop_sequence` a `status`: `in_tr
 Pořadí se ověřuje proti jízdnímu řádu. Pokud ho zdroj neposkytuje (aktuální feed KORDIS uvádí pouze ID zastávky), použije se ID jen při jednoznačném výskytu v trase. Při nejednoznačnosti, rozporu, zastaralé zprávě nebo chybějící použitelné poloze je `current_stop: null`. Web zvýrazňuje odpovídající zastávku v seznamu i na mapě a zvýraznění obnovuje s polohou vozidla.
 
 Seznam zastávek v detailu má vlastní posouvání. Při otevření a změně zastávky hlášené vozidlem se zvýrazněný řádek posune do středu seznamu. Obnova stejné zastávky zachová ruční posunutí seznamu; mapa se neposouvá.
+
+Volba **Sledovat vozidlo** je při otevření detailu vypnutá. Po zapnutí se mapa vystředí na vozidlo a při každé aktualizaci následuje jeho čerstvou polohu bez změny přiblížení. Po vypnutí zůstává ruční poloha mapy zachována.
