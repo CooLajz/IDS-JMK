@@ -294,6 +294,10 @@ tr:nth-child(even) {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+.route .filter-link {
+  color: inherit;
+  font: inherit;
+}
 .time,
 .minutes {
   font-size: 21px;

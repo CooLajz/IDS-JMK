@@ -200,7 +200,8 @@ function filterLink(container, name, value, label, key) {
   button.className = "filter-link";
   button.dataset.key = `${key}/${name}`;
   button.textContent = label;
-  button.title = `Filtrovat ${name === "direction" ? "směr" : "stanoviště"}: ${label}`;
+  const filterName = { line: "linku", direction: "směr", platform: "stanoviště" }[name];
+  button.title = `Filtrovat ${filterName}: ${label}`;
   button.setAttribute("aria-label", button.title);
   button.addEventListener("click", () => {
     $(name).value = value;
@@ -227,7 +228,7 @@ async function refresh() {
     notice(
       data.realtime_stale
         ? "Realtime údaje nejsou čerstvé. Odjezdy jsou podle jízdního řádu."
-        : "Živá tabule · obnova každých 30 sekund. Kliknutím na směr nebo stanoviště nastavíte filtr, tlačítkem „Poloha“ otevřete mapu.",
+        : "Živá tabule · obnova každých 30 sekund. Kliknutím na linku, směr nebo stanoviště nastavíte filtr, tlačítkem „Poloha“ otevřete mapu.",
     );
   } catch (e) {
     if (seq === boardSequence) {
@@ -271,9 +272,9 @@ function renderBoard() {
       tr.append(td);
       return td;
     };
-    cell(d.line, "route");
-    const dest = cell("");
     const key = `${d.trip_id}/${d.service_date}/${d.stop_sequence}`;
+    filterLink(cell("", "route"), "line", d.line, d.line, key);
+    const dest = cell("");
     filterLink(dest, "direction", d.destination, d.destination || "—", key);
     if (d.has_vehicle_position) {
       const position = document.createElement("button");
