@@ -31,7 +31,6 @@
   },
   "config_subentries": {
     "board": {
-      "title": "Odjezdová tabule",
       "step": {
         "search": {
           "title": "Vyhledat zastávku",
@@ -76,6 +75,10 @@
       "abort": {
         "already_configured": "Tato odjezdová tabule už je nastavená.",
         "reconfigure_successful": "Nastavení tabule bylo uloženo."
+      },
+      "entry_type": "Odjezdová tabule",
+      "initiate_flow": {
+        "user": "Přidat odjezdovou tabuli"
       }
     }
   },

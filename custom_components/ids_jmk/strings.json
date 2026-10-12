@@ -31,7 +31,6 @@
   },
   "config_subentries": {
     "board": {
-      "title": "Departure board",
       "step": {
         "search": {
           "title": "Search for a stop",
@@ -76,6 +75,10 @@
       "abort": {
         "already_configured": "This board is already configured.",
         "reconfigure_successful": "Board settings saved."
+      },
+      "entry_type": "Departure board",
+      "initiate_flow": {
+        "user": "Add departure board"
       }
     }
   },
