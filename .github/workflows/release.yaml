@@ -18,7 +18,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.13'
-      - run: uv sync --frozen && uv run pytest -q && uv run ruff check api custom_components tests scripts
+      - run: uv sync --frozen && uv run pytest -q && uv run ruff check api custom_components tests scripts home-assistant
       - name: Ověření verze
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -35,6 +35,7 @@ jobs:
           from api.main import app
           assert app.version == version
           assert json.load(open('custom_components/ids_jmk/manifest.json'))['version'] == version
+          assert json.load(open('home-assistant/ids_jmk/config.json'))['version'] == version
           PY
   images:
     needs: check
@@ -44,7 +45,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        component: [api, web]
+        component: [api, web, ha]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -63,6 +64,8 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.component == 'web' && './web' || '.' }}
+          target: ${{ matrix.component == 'ha' && 'home-assistant' || '' }}
+          build-args: BUILD_VERSION=${{ steps.meta.outputs.version }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

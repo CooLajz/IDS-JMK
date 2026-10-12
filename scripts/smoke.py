@@ -12,6 +12,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--url", default="http://127.0.0.1:8090")
 parser.add_argument("--state", type=Path)
 parser.add_argument("--verify-state", action="store_true")
+parser.add_argument("--api-only", action="store_true")
+parser.add_argument("--timeout", type=int, default=240)
 args = parser.parse_args()
 base = args.url.rstrip("/")
 
@@ -25,7 +27,7 @@ def api(path):
     return json.loads(get("/api/v1/" + path))
 
 
-for attempt in range(120):
+for attempt in range(max(1, args.timeout // 2)):
     try:
         status = api("status")
         if status["ready"]:
@@ -53,8 +55,9 @@ for row in board["departures"]:
     assert trip["active"] and trip["stops"]
 assert json.loads(get("/openapi.json"))["info"]["version"] == status["version"]
 assert b"swagger" in get("/docs").lower()
-html = get("/").decode()
-assert "Odjezdy" in html and "API URL / JSON" in html
+if not args.api_only:
+    html = get("/").decode()
+    assert "Odjezdy" in html and "API URL / JSON" in html
 snapshot = {"instance_id": status["instance_id"], "schema_version": status["schedule"]["schema_version"]}
 if args.state:
     if args.verify_state:

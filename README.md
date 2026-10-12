@@ -35,6 +35,12 @@ Web: [http://127.0.0.1:5173](http://127.0.0.1:5173). API dokumentace: [http://12
 
 První start automaticky stáhne jízdní řády a vytvoří databázi v `data/`. Během importu API vrací stav 503 s vysvětlením; web počká a připojí se automaticky.
 
+## Parser přímo v Home Assistant OS
+
+Ve stejném repozitáři je připravena aplikace **IDS JMK Parser** pro ARM64 (64bitové Raspberry Pi) a AMD64 (například virtuál). Obsahuje pouze parser/API a nastavení přes HA. Integrace a odjezdová karta se nadále instalují samostatně přes HACS nebo ručně.
+
+**První obraz aplikace zatím vyžaduje publikování a ověření v HA OS.** Instalační postup, nastavení a zálohování popisuje [dokumentace aplikace](home-assistant/ids_jmk/DOCS.md). Stávající Docker instalace zůstává dostupná.
+
 ## Docker a Portainer
 
 Projekt lze sestavit ze zdrojů lokálně:
@@ -69,10 +75,11 @@ docker compose -f compose.proxy.yaml -f compose.build.yaml up -d --build
 
 ### Vývojové verze z hlavní větve
 
-Po každém pushi do větve `main` workflow **Kontroly** spustí testy a po jejich úspěchu publikuje oba vývojové obrazy pro Linux AMD64 a ARM64:
+Po každém pushi do větve `main` workflow **Kontroly** spustí testy a po jejich úspěchu publikuje tři vývojové obrazy pro Linux AMD64 a ARM64:
 
 - `ghcr.io/coolajz/ids-jmk-api:dev`
 - `ghcr.io/coolajz/ids-jmk-web:dev`
+- `ghcr.io/coolajz/ids-jmk-ha:dev` (parser pro HA OS)
 
 Tag `dev` označuje poslední publikovanou vývojovou verzi. Každý obraz dostane také tag `dev-<celý SHA commitu>` pro nasazení konkrétní revize. Nový push ruší starší probíhající běh kontrol pro stejnou větev; při rychlém sledu pushů se tedy publikuje nejnovější úspěšně dokončený běh. Publikování vývojových obrazů nemění stabilní tag `latest` ani vydané verze. Pull requesty a ostatní větve se pouze testují.
 
@@ -82,7 +89,7 @@ Pro testování za reverse proxy ponechte v Portaineru repozitář, větev `refs
 2. V Portaineru použijte **Pull and redeploy** a zapněte **Re-pull image** (podle verze **Re-pull image and redeploy**), aby se stáhl nový obsah tagu `dev`.
 3. Po aktualizaci ověřte, že oba kontejnery hlásí stav `healthy`.
 
-Oba obrazy se publikují samostatně. Pokud některé publikování selže nebo je běh přerušen, nenasazujte jej; vyčkejte na úspěšné dokončení obou obrazů. Pro návrat ke konkrétnímu úspěšnému běhu nastavte `IMAGE_TAG=dev-<celý SHA commitu>`, případně pro návrat ke stabilní verzi použijte její číselný tag. Datový svazek při aktualizaci zachovejte.
+Obrazy se publikují samostatně. Pokud některé publikování selže nebo je běh přerušen, nenasazujte jej; vyčkejte na úspěšné dokončení všech obrazů. Pro návrat ke konkrétnímu úspěšnému běhu nastavte `IMAGE_TAG=dev-<celý SHA commitu>`, případně pro návrat ke stabilní verzi použijte její číselný tag. Datový svazek při aktualizaci zachovejte.
 
 Samotná kontrola změn Gitu v Portaineru nezaručuje nasazení nového obrazu: může proběhnout ještě před dokončením sestavení a později už nenajít nový commit. Automatizace nasazení proto musí navazovat až na úspěšné publikování obou obrazů. Tento workflow automatizuje publikování, nikoli aktualizaci běžícího serveru. Podrobnosti k ruční aktualizaci popisuje [dokumentace Portaineru](https://docs.portainer.io/user/docker/stacks/edit).
 

@@ -1,6 +1,6 @@
 # Home Assistant
 
-Integrace potřebuje běžící IDS JMK API dostupné ze sítě Home Assistantu. GTFS se stahuje a zpracovává pouze na serveru.
+Integrace potřebuje běžící IDS JMK API dostupné ze sítě Home Assistantu. GTFS se stahuje a zpracovává pouze v parseru. Ten může běžet na samostatném serveru nebo jako [aplikace přímo v HA OS](../home-assistant/ids_jmk/DOCS.md). Aplikace je připravena pro první vydání; před instalací ověřte dostupnost jejího obrazu.
 
 ## Instalace vlastní integrace
 

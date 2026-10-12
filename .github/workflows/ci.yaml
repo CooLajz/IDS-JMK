@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: '3.13'
       - run: uv sync --frozen
-      - run: uv run ruff check api custom_components tests scripts
+      - run: uv run ruff check api custom_components tests scripts home-assistant
       - run: uv run pytest -q
       - uses: actions/setup-node@v4
         with:
@@ -61,9 +61,50 @@ jobs:
         run: docker compose -f compose.web.yaml logs --tail 100
       - if: always()
         run: docker compose -f compose.web.yaml down
+  ha-app:
+    name: Aplikace HA (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: home-assistant
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          tags: ids-jmk-ha:test
+      - name: První start s datovým adresářem Supervisoru
+        run: |
+          mkdir -p /tmp/ids-ha-data
+          python - <<'PYTEST'
+          import json, pathlib
+          config = json.loads(pathlib.Path('home-assistant/ids_jmk/config.json').read_text())
+          pathlib.Path('/tmp/ids-ha-data/options.json').write_text(json.dumps(config['options']))
+          PYTEST
+          chmod 600 /tmp/ids-ha-data/options.json
+          docker run -d --name ids-ha --init --platform linux/${{ matrix.arch }} \
+            -p 127.0.0.1:18080:8080 -v /tmp/ids-ha-data:/data ids-jmk-ha:test
+          python scripts/smoke.py --api-only --url http://127.0.0.1:18080 --timeout 600 --state /tmp/ha-state.json
+          test "$(stat -c %u /tmp/ids-ha-data/parser/instance-id)" = 10001
+      - name: Restart a zachování identity
+        run: |
+          docker restart ids-ha
+          python scripts/smoke.py --api-only --url http://127.0.0.1:18080 --timeout 600 --state /tmp/ha-state.json --verify-state
+      - name: Velikost obrazu
+        run: docker image inspect ids-jmk-ha:test --format '{{.Size}}'
+      - if: failure()
+        run: docker logs --tail 100 ids-ha
+      - if: always()
+        run: docker rm -f ids-ha
   dev-images:
     name: Vývojový obraz (${{ matrix.component }})
-    needs: [test, home-assistant, hassfest, docker]
+    needs: [test, home-assistant, hassfest, docker, ha-app]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -72,7 +113,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        component: [api, web]
+        component: [api, web, ha]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -95,6 +136,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.component == 'web' && './web' || '.' }}
+          target: ${{ matrix.component == 'ha' && 'home-assistant' || '' }}
+          build-args: BUILD_VERSION=dev
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
