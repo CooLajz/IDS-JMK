@@ -166,7 +166,13 @@ obnovování poloh je znovu nestahuje.
 
 Přepínač **Přehled** zapíná automatické přizpůsobování mapy všem zobrazeným
 vozidlům při každé obnově. Při otevření detailu zůstanou všechna vozidla ve výřezu.
-Po vypnutí Přehledu můžete mapu posouvat a přibližovat ručně.
+Po vypnutí Přehledu můžete mapu posouvat a přibližovat ručně. Volba Přehledu
+se pamatuje v daném prohlížeči i po obnovení stránky. Pokud máte zapnuté trvalé
+zastávky, Přehled zahrnuje také je. Při přiblížení se zobrazí názvy zastávek.
+Chyba načítání zastávek se zobrazuje samostatně pod časem aktualizace. Funkce
+vyžaduje aktualizované sestavení API 0.1.5 s endpointem `/api/v1/map/stops`.
+Pokud používáte dřívější sestavení stejné verze, stáhněte obraz znovu a integraci
+přeinstalujte z aktuálního vydání.
 
 Je nutné aktualizovat **API i integraci**, restartovat HA a obnovit dashboard.
 Karta se registruje automaticky stejně jako tabule a upozornění. Připojení

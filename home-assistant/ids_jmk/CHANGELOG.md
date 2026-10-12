@@ -1,5 +1,10 @@
 # 0.1.5
 
+- Doplněno API `/api/v1/map/stops` pro zastávky vybraných linek a směrů, nezávisle na jedoucích vozidlech.
+- Karta nabízí interval obnovování (výchozí 30 sekund), trvalé zastávky a zavření detailu kliknutím do mapy.
+- Přehled se pamatuje po obnovení stránky a zahrnuje všechna vozidla i zapnuté zastávky.
+- Při aktualizaci dřívějšího sestavení 0.1.5 stáhněte obrazy znovu a přeinstalujte integraci.
+
 - Doplněn kumulativní endpoint `/api/v1/statistics/cumulative` pro statistické senzory integrace.
 - Integrace nyní sdružuje více tabulí pod jeden zdroj a poskytuje 18 statistických senzorů bez denního resetu.
 

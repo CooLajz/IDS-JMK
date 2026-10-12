@@ -53,6 +53,17 @@ for row in board["departures"]:
         "trips/" + urllib.parse.quote(row["trip_id"], safe="") + "?service_date=" + row["service_date"]
     )
     assert trip["active"] and trip["stops"]
+routes = api("map/routes")["routes"]
+route = next(r for r in routes if r["directions"])
+request = urllib.request.Request(
+    base + "/api/v1/map/stops",
+    data=json.dumps([{"route_id": route["id"], "direction": "*"}]).encode(),
+    headers={"Content-Type": "application/json"},
+)
+with urllib.request.urlopen(request, timeout=15) as response:
+    map_stops = json.load(response)["stops"]
+assert map_stops, "Mapa nevrátila zastávky vybrané linky"
+assert all(s["route_id"] == route["id"] for s in map_stops)
 assert json.loads(get("/openapi.json"))["info"]["version"] == status["version"]
 assert b"swagger" in get("/docs").lower()
 if not args.api_only:
@@ -71,6 +82,7 @@ print(
             "version": status["version"],
             "stops": len(stops),
             "departures": len(board["departures"]),
+            "map_stops": len(map_stops),
             "realtime_enabled": status["realtime"]["enabled"],
             "realtime_stale": status["realtime"].get("stale"),
             "persistent_identity_verified": args.verify_state,

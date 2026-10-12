@@ -46,7 +46,7 @@ function loadMap() {
     });
   return leaflet;
 }
-const css = `:host{display:block}*{box-sizing:border-box}ha-card{display:block;overflow:hidden;background:var(--ha-card-background,var(--card-background-color,#fff));color:var(--primary-text-color,#172b3a);border-radius:16px}header{padding:12px 16px;display:flex;align-items:center;gap:12px}.heading{flex:1;min-width:0}h2{font-size:18px;line-height:1.3;margin:0;overflow-wrap:anywhere}header button{flex-shrink:0}header button[aria-checked="true"]{background:var(--primary-color,#1769c2);color:var(--text-primary-color,#fff);border-color:var(--primary-color,#1769c2)}button,select{font:inherit;padding:8px;border:1px solid var(--divider-color,#ccc);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#172b3a)}button{cursor:pointer}.detail{padding:10px 16px;font-size:13px;line-height:1.5}.status{margin-top:4px;font-size:12px;line-height:1.4;overflow-wrap:anywhere;color:var(--secondary-text-color,#536475)}.map{height:var(--map-height,400px);isolation:isolate;background:#e6ede9}.vehicle{background:none;border:0;text-align:center;white-space:nowrap}.vehicle-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:var(--vehicle-color);color:white;border:2px solid white;border-radius:12px;box-shadow:0 2px 6px #0005;font:bold 13px/16px sans-serif}.vehicle ha-icon{display:block;width:26px;height:26px;--mdc-icon-size:26px}.vehicle-number{display:block;max-width:100%;padding:0 2px;overflow:hidden;text-overflow:ellipsis}.leaflet-container{font-family:inherit}.detail:empty{display:none}.detail ol{max-height:150px;overflow:auto;padding-left:22px}@media(max-width:450px){header{padding:12px}h2{font-size:16px}}`;
+const css = `:host{display:block}*{box-sizing:border-box}ha-card{display:block;overflow:hidden;background:var(--ha-card-background,var(--card-background-color,#fff));color:var(--primary-text-color,#172b3a);border-radius:16px}header{padding:12px 16px;display:flex;align-items:center;gap:12px}.heading{flex:1;min-width:0}h2{font-size:18px;line-height:1.3;margin:0;overflow-wrap:anywhere}header button{flex-shrink:0}header button[aria-checked="true"]{background:var(--primary-color,#1769c2);color:var(--text-primary-color,#fff);border-color:var(--primary-color,#1769c2)}button,select{font:inherit;padding:8px;border:1px solid var(--divider-color,#ccc);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#172b3a)}button{cursor:pointer}.detail{padding:10px 16px;font-size:13px;line-height:1.5}.status{margin-top:4px;font-size:12px;line-height:1.4;overflow-wrap:anywhere;color:var(--secondary-text-color,#536475)}.stops-status{margin-top:4px;color:var(--warning-color,#a46600);font-size:12px;line-height:1.4}.stops-status[hidden]{display:none}.map{height:var(--map-height,400px);isolation:isolate;background:#e6ede9}.vehicle{background:none;border:0;text-align:center;white-space:nowrap}.vehicle-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:var(--vehicle-color);color:white;border:2px solid white;border-radius:12px;box-shadow:0 2px 6px #0005;font:bold 13px/16px sans-serif}.vehicle ha-icon{display:block;width:26px;height:26px;--mdc-icon-size:26px}.vehicle-number{display:block;max-width:100%;padding:0 2px;overflow:hidden;text-overflow:ellipsis}.leaflet-container{font-family:inherit}.detail:empty{display:none}.detail ol{max-height:150px;overflow:auto;padding-left:22px}@media(max-width:450px){header{padding:12px}h2{font-size:16px}}`;
 class MapCard extends HTMLElement {
   constructor() {
     super();
@@ -84,15 +84,43 @@ class MapCard extends HTMLElement {
       this.route.clearLayers();
       this.permanentStops.clearLayers();
       this.detail.textContent = "";
+      this.showStopsStatus();
     }
     this.fitted = false;
+    this.restoreOverview();
     this.startTimer();
     this.init();
     this.refresh();
   }
   set hass(value) {
     this._hass = value;
+    this.restoreOverview();
     this.init();
+  }
+  restoreOverview() {
+    if (!this.config || !this._hass) return;
+    const key =
+      "ids-jmk-map:overview:" +
+      JSON.stringify([
+        this._hass.user?.id || "",
+        this.config.entry_id || "",
+        this.config.title || "",
+        this.config.selections.map((s) => [s.route_id, s.direction]).sort(),
+      ]);
+    if (key === this.overviewKey) return;
+    this.overviewKey = key;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved !== null) this.overview = saved === "true";
+    } catch {
+      /* Keep the current choice when browser storage is disabled. */
+    }
+    this.updateOverviewButton();
+  }
+  updateOverviewButton() {
+    this.shadowRoot
+      .querySelector('button[role="switch"]')
+      ?.setAttribute("aria-checked", String(this.overview));
   }
   static getConfigElement() {
     return document.createElement(`${TYPE}-editor`);
@@ -137,7 +165,7 @@ class MapCard extends HTMLElement {
     )
       return;
     this.initializing = true;
-    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="/ids_jmk/map-vendor/leaflet.css"><style>${css}</style><ha-card><header><div class="heading"><h2>${esc(this.config.title || "Mapa vehyklů")}</h2><div class="status" role="status">Načítání mapy…</div></div><button role="switch" aria-checked="${this.overview}" title="Automaticky přizpůsobovat mapu všem vozidlům">Přehled</button></header><div class="map" aria-label="Mapa vozidel IDS JMK"></div><div class="detail"></div></ha-card>`;
+    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="/ids_jmk/map-vendor/leaflet.css"><style>${css}</style><ha-card><header><div class="heading"><h2>${esc(this.config.title || "Mapa vehyklů")}</h2><div class="status" role="status">Načítání mapy…</div><div class="stops-status" role="status" hidden></div></div><button role="switch" aria-checked="${this.overview}" title="Automaticky přizpůsobovat mapu všem vozidlům">Přehled</button></header><div class="map" aria-label="Mapa vozidel IDS JMK"></div><div class="detail"></div></ha-card>`;
     this.status = this.shadowRoot.querySelector(".status");
     this.detail = this.shadowRoot.querySelector(".detail");
     try {
@@ -155,12 +183,16 @@ class MapCard extends HTMLElement {
       this.markers = this.L.featureGroup().addTo(this.map);
       this.route = this.L.featureGroup().addTo(this.map);
       this.permanentStops = this.L.featureGroup().addTo(this.map);
+      this.map.on("zoomend", () => this.updateStopLabels());
       this.map.on("click", () => this.closeDetail());
       this.shadowRoot.querySelector("button").onclick = () => {
         this.overview = !this.overview;
-        this.shadowRoot
-          .querySelector("button")
-          .setAttribute("aria-checked", String(this.overview));
+        this.updateOverviewButton();
+        try {
+          localStorage.setItem(this.overviewKey, String(this.overview));
+        } catch {
+          /* The switch still works without browser storage. */
+        }
         if (this.overview) this.fit();
       };
       this.observer = new ResizeObserver(() => this.map?.invalidateSize());
@@ -182,8 +214,14 @@ class MapCard extends HTMLElement {
   }
   fit() {
     const bounds = this.markers.getBounds();
+    const stopBounds = this.permanentStops.getBounds();
+    if (stopBounds.isValid()) bounds.extend(stopBounds);
     if (bounds.isValid())
-      this.map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
+      this.map.fitBounds(bounds, {
+        padding: [30, 30],
+        maxZoom: 14,
+        animate: false,
+      });
   }
   closeDetail() {
     this.selected = null;
@@ -192,14 +230,31 @@ class MapCard extends HTMLElement {
   }
   addStop(stop, layer) {
     this.L.circleMarker([stop.lat, stop.lon], {
-      radius: 4,
+      radius: 6,
+      weight: 3,
+      opacity: 1,
       color: directionColor(stop.direction),
       fillOpacity: 1,
       fillColor: "white",
       bubblingMouseEvents: false,
     })
-      .bindTooltip(esc(stop.name))
+      .bindTooltip(esc(stop.name), { direction: "top", offset: [0, -6] })
       .addTo(layer);
+  }
+  updateStopLabels() {
+    if (!this.map || !this.permanentStops) return;
+    const visible = this.map.getZoom() >= 13;
+    this.permanentStops.eachLayer((marker) => {
+      marker.getTooltip().options.permanent = visible;
+      if (visible) marker.openTooltip();
+      else marker.closeTooltip();
+    });
+  }
+  showStopsStatus(message = "") {
+    const status = this.shadowRoot.querySelector(".stops-status");
+    if (!status) return;
+    status.textContent = message;
+    status.hidden = !message;
   }
   async loadStops() {
     const generation = this.generation;
@@ -229,11 +284,16 @@ class MapCard extends HTMLElement {
       }
       this.stopsLoaded = true;
       this.stopsError = "";
+      this.showStopsStatus(
+        data.stops?.length ? "" : "Pro vybrané linky nejsou dostupné zastávky.",
+      );
+      if (this.overview || !this.fitted) this.fit();
+      this.updateStopLabels();
     } catch {
       if (generation === this.generation && this.isConnected) {
         this.stopsError =
           "Zastávky nelze načíst. Ověřte aktualizaci API a integrace.";
-        this.status.textContent += ` · ${this.stopsError}`;
+        this.showStopsStatus(this.stopsError);
       }
     } finally {
       if (this.stopsPending === generation) this.stopsPending = null;
@@ -273,7 +333,7 @@ class MapCard extends HTMLElement {
         : data.stale
           ? "Polohy nejsou aktuální. Čeká se na nová data."
           : `${vehicles.length} vozidel · ${data.updated_at ? new Date(data.updated_at).toLocaleTimeString("cs-CZ") : "bez aktualizace"}${vehicles.length ? "" : " · Pro výběr nejsou dostupné aktuální polohy."}`;
-      if (this.stopsError) this.status.textContent += ` · ${this.stopsError}`;
+
       for (const v of vehicles) {
         this.L.marker([v.position.lat, v.position.lon], {
           title: `${v.line} → ${v.destination}`,
@@ -297,7 +357,10 @@ class MapCard extends HTMLElement {
       ) {
         this.closeDetail();
       }
-      if ((this.overview || !this.fitted) && vehicles.length) {
+      if (
+        (this.overview || !this.fitted) &&
+        (vehicles.length || this.permanentStops.getLayers().length)
+      ) {
         this.fit();
         this.fitted = true;
       }
@@ -346,6 +409,7 @@ class MapCard extends HTMLElement {
         this.map.fitBounds(this.route.getBounds(), {
           padding: [24, 24],
           maxZoom: 14,
+          animate: false,
         });
       const delay = vehicle.current_stop?.delay_seconds;
       this.detail.innerHTML = `<strong>${esc(vehicle.line)} → ${esc(vehicle.destination)}</strong><br>Vozidlo ${esc(vehicle.label || vehicle.id)} · Poloha ${esc(new Date(vehicle.updated_at).toLocaleTimeString("cs-CZ"))}${delay != null ? ` · Zpoždění ${Math.round(delay / 60)} min` : ""}<br>Orientační spojnice zastávek, nikoli přesný průběh trasy.<ol>${stops.map((s) => `<li>${esc(s.name)}</li>`).join("")}</ol>`;

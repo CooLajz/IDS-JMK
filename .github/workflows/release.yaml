@@ -96,8 +96,13 @@ jobs:
                   if p.is_file() and '__pycache__' not in p.parts:
                       z.write(p,p.relative_to('custom_components'))
           PY
-      - name: Vytvoření draftu releasu
+      - name: Přílohy releasu
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" release/* --draft --verify-tag --generate-notes
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release/* --draft --verify-tag --generate-notes
+          fi
