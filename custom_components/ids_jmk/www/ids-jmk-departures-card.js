@@ -1,6 +1,6 @@
 /* IDS JMK dashboard card. No external dependencies or direct API requests. */
 const TYPE = "ids-jmk-departures-card";
-const DEFAULTS = { limit: 10, layout: "modern", highlight_minutes: 5, show_platform: true, show_accessibility: true, show_transport_icon: true, show_line_number: true, show_departure_day: true };
+const DEFAULTS = { show_header: true, show_footer: true, limit: 10, layout: "modern", highlight_minutes: 5, show_platform: true, show_accessibility: true, show_transport_icon: true, show_line_number: true, show_departure_day: true };
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const time = (value) => {
@@ -74,6 +74,8 @@ const styles = `
   .labels { padding:0 16px 9px; font-size:9px; text-transform:uppercase; letter-spacing:.2px; color:var(--secondary-text-color, #657267); }
   .labels span { white-space:nowrap; }
   .labels span:nth-child(n+3) { text-align:center; }
+  .no-header .labels { padding-top:12px; }
+  .compact.no-header .labels { padding-top:6px; }
   .rows { list-style:none; padding:0; margin:0; }
   .row { min-height:68px; padding:12px 16px; border-top:1px solid var(--divider-color, #e6eae6); }
   .row.first { background:color-mix(in srgb, var(--primary-color, #447b32) 5%, transparent); }
@@ -180,7 +182,7 @@ class IDSJMKDeparturesCard extends HTMLElement {
     this.render();
   }
   disconnectedCallback() { clearInterval(this.timer); this.unsubscribe?.(); this.unsubscribe = undefined; }
-  getCardSize() { return 2 + (this.config?.limit ?? 10) * (this.config?.layout === "compact" ? 0.8 : 1.4); }
+  getCardSize() { return (this.config?.show_header === false ? 0 : 1.3) + (this.config?.show_footer === false ? 0 : 0.7) + (this.config?.limit ?? 10) * (this.config?.layout === "compact" ? 0.8 : 1.4); }
   getGridOptions() { return { columns: 12, min_columns: 12 }; }
   static getConfigElement() { return document.createElement(`${TYPE}-editor`); }
   static getStubConfig(hass) {
@@ -232,10 +234,10 @@ class IDSJMKDeparturesCard extends HTMLElement {
         </li>`;
       }).join("")}</ol>`;
     }
-    const markup = `<style>${styles}</style><ha-card class="${this.config.layout}">
-      <header><div class="badge">${icon("bus-clock", "Odjezdy IDS JMK")}</div><div class="heading"><div class="eyebrow">IDS JMK · ODJEZDY</div><h2>${escape(title)}</h2></div></header>
+    const markup = `<style>${styles}</style><ha-card class="${this.config.layout}${this.config.show_header ? "" : " no-header"}">
+      ${this.config.show_header ? `<header><div class="badge">${icon("bus-clock", "Odjezdy IDS JMK")}</div><div class="heading"><div class="eyebrow">IDS JMK · ODJEZDY</div><h2>${escape(title)}</h2></div></header>` : ""}
       ${body}
-      <footer><span class="status ${stale || unavailable ? "warning" : ""}"><span class="dot"></span>${unavailable ? "Bez spojení" : old ? "Data nejsou aktuální" : stale ? "Realtime není aktuální" : !realtimeEnabled ? "Jízdní řád · realtime vypnutý" : "Data aktualizována"}</span><span>Aktualizace ${escape(time(attributes.generated_at))}</span></footer>
+      ${this.config.show_footer ? `<footer><span class="status ${stale || unavailable ? "warning" : ""}"><span class="dot"></span>${unavailable ? "Bez spojení" : old ? "Data nejsou aktuální" : stale ? "Realtime není aktuální" : !realtimeEnabled ? "Jízdní řád · realtime vypnutý" : "Data aktualizována"}</span><span>Aktualizace ${escape(time(attributes.generated_at))}</span></footer>` : ""}
     </ha-card>`;
     if (markup !== this._markup) {
       this.shadowRoot.innerHTML = markup;
@@ -259,13 +261,15 @@ class IDSJMKDeparturesEditor extends HTMLElement {
         { name: "layout", required: true, selector: { select: { mode: "dropdown", options: [{ value: "modern", label: "Moderní" }, { value: "compact", label: "Kompaktní" }] } } },
         { name: "highlight_minutes", required: true, selector: { number: { min: 0, max: 60, mode: "box", unit_of_measurement: "min" } } },
         { name: "limit", required: true, selector: { number: { min: 1, max: 50, mode: "box" } } },
+        { name: "show_header", selector: { boolean: {} } },
+        { name: "show_footer", selector: { boolean: {} } },
         { name: "show_departure_day", selector: { boolean: {} } },
         { name: "show_line_number", selector: { boolean: {} } },
         { name: "show_transport_icon", selector: { boolean: {} } },
         { name: "show_platform", selector: { boolean: {} } },
         { name: "show_accessibility", selector: { boolean: {} } },
       ];
-      const labels = { entity: "Senzor odjezdové tabule", title: "Vlastní nadpis (volitelné)", layout: "Vzhled karty", highlight_minutes: "Zvýraznit odjezd do (0 = vypnuto)", limit: "Počet zobrazených odjezdů", show_departure_day: "Zobrazit den odjezdu", show_line_number: "Zobrazit číslo linky", show_transport_icon: "Zobrazit ikonu druhu dopravy", show_platform: "Zobrazit stanoviště", show_accessibility: "Zobrazit ikonky vybavení podle jízdního řádu" };
+      const labels = { show_header: "Zobrazit záhlaví", show_footer: "Zobrazit zápatí", entity: "Senzor odjezdové tabule", title: "Vlastní nadpis (volitelné)", layout: "Vzhled karty", highlight_minutes: "Zvýraznit odjezd do (0 = vypnuto)", limit: "Počet zobrazených odjezdů", show_departure_day: "Zobrazit den odjezdu", show_line_number: "Zobrazit číslo linky", show_transport_icon: "Zobrazit ikonu druhu dopravy", show_platform: "Zobrazit stanoviště", show_accessibility: "Zobrazit ikonky vybavení podle jízdního řádu" };
       this.form.computeLabel = (schema) => labels[schema.name];
       this.form.addEventListener("value-changed", (event) => {
         event.stopPropagation();
