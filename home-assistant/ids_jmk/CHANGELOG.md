@@ -2,7 +2,6 @@
 
 - Doplněn kumulativní endpoint `/api/v1/statistics/cumulative` pro statistické senzory integrace.
 - Integrace nyní sdružuje více tabulí pod jeden zdroj a poskytuje 18 statistických senzorů bez denního resetu.
-- Znovu vydaná testovací verze 0.1.5: stáhněte nový obraz i integraci a původní konfigurace integrace vytvořte znovu.
 
 - Přidáno API pro mapu vozidel: výběr linek a směrů, aktuální polohy a provozní den spoje.
 - Nová samostatná karta Mapa vehyklů v integraci HA bez entit pro jednotlivá vozidla. Aktualizujte také integraci.

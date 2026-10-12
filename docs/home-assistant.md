@@ -25,7 +25,7 @@ V **Nastavení → Zařízení a služby → Přidat integraci → IDS JMK**:
 
 Pro každou tabuli vznikne jeden senzor. Jeho stav je počet minut do nejbližšího nezrušeného odjezdu. Atribut `departures` obsahuje celou tabulku. Při výpadku API se senzor označí jako nedostupný. Další tabuli přidejte pod stejným zdrojem, bez opětovného zadávání adresy. Počet řádků lze měnit volbou **Překonfigurovat** u tabule. Další server přidejte jako novou integraci; má vlastní tabule i statistiky. Změnu adresy téhož serveru proveďte volbou **Překonfigurovat** u zdroje.
 
-Starší testovací konfigurace se automaticky nepřevádějí. Před aktualizací odeberte původní položky integrace a po restartu vytvořte zdroj a jeho tabule znovu. V dashboardech následně vyberte nové senzory a v mapové kartě nový zdroj. Tabule lze jednotlivě odebrat z podřízených konfigurací zdroje.
+Tabule lze jednotlivě odebrat z podřízených konfigurací zdroje.
 
 ### Kumulativní statistiky zdroje
 
