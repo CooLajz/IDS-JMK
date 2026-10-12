@@ -430,33 +430,69 @@ class MapEditor extends HTMLElement {
     this.load();
   }
   set hass(value) {
+    if (this._hass?.connection !== value.connection) {
+      this.sources = undefined;
+      this.routeEntry = undefined;
+      this.failedEntry = undefined;
+      this.loadFailed = false;
+    }
     this._hass = value;
     this.load();
   }
   async load() {
     if (!this._hass || !this.config || this.loading) return;
-    this.loading = true;
     const entry = this.config.entry_id;
+    if (this.loadFailed && this.failedEntry === entry) return;
+    if (this.sources && (!entry || this.routeEntry === entry)) return;
+    this.loading = true;
+    const connection = this._hass.connection;
     try {
-      this.sources = await this._hass.callWS({ type: "ids_jmk/map_sources" });
+      if (!this.sources) {
+        const sources = await this._hass.callWS({
+          type: "ids_jmk/map_sources",
+        });
+        if (connection !== this._hass.connection) return;
+        this.sources = sources;
+      }
       if (entry && this.routeEntry !== entry) {
         const data = await this._hass.callWS({
           type: "ids_jmk/map",
           entry_id: entry,
           action: "routes",
         });
-        if (this.config.entry_id === entry) {
+        if (
+          this.config.entry_id === entry &&
+          connection === this._hass.connection
+        ) {
           this.routes = data.routes;
           this.routeEntry = entry;
         }
       }
-      this.error = "";
+      if (
+        this.config.entry_id === entry &&
+        connection === this._hass.connection
+      ) {
+        this.error = "";
+        this.failedEntry = undefined;
+        this.loadFailed = false;
+      }
     } catch {
-      this.error = "Seznam nelze načíst. Ověřte připojení a verzi API.";
+      if (
+        this.config.entry_id === entry &&
+        connection === this._hass.connection
+      ) {
+        this.failedEntry = entry;
+        this.loadFailed = true;
+        this.error = "Seznam nelze načíst. Ověřte připojení a verzi API.";
+      }
     } finally {
       this.loading = false;
       this.render();
-      if (entry !== this.config.entry_id) this.load();
+      if (
+        entry !== this.config.entry_id ||
+        connection !== this._hass.connection
+      )
+        this.load();
     }
   }
   change() {
@@ -473,14 +509,63 @@ class MapEditor extends HTMLElement {
     if (!this.config) return;
     const routes =
       this.routeEntry === this.config.entry_id ? this.routes || [] : [];
-    this.shadowRoot.innerHTML = `<style>:host{display:block}*{box-sizing:border-box}label{min-width:0;display:block;margin:12px 0;font-size:14px}select,input{display:block;width:100%;padding:10px;margin-top:6px;font:inherit;background:var(--card-background-color,white);color:var(--primary-text-color);border:1px solid var(--divider-color,#bbb);border-radius:8px}.stop-option{display:flex;align-items:center;gap:8px;margin:0 0 16px}.stop-option input{width:auto;margin:0}.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end;margin:10px 0}button{padding:10px;cursor:pointer}p{font-size:13px}</style><label>Zdroj dat<select id="source"><option value="">Vyberte připojení</option>${(this.sources || []).map((s) => `<option value="${esc(s.id)}" ${s.id === this.config.entry_id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select></label><label>Nadpis<input id="title" value="${esc(this.config.title || "Mapa vehyklů")}"></label><label>Interval obnovování (sekundy)<input id="interval" type="number" min="5" max="3600" step="1" value="${esc(this.config.refresh_interval ?? 30)}"></label><p>Výchozí interval je 30 sekund. Interval stahování dat na serveru se tím nemění.</p><p>Vyberte linky a jejich směry. Zkrácené spoje jsou zahrnuty podle směru GTFS.</p>${this.config.selections
+    const renderKey = JSON.stringify([
+      this.config.entry_id,
+      this.config.selections,
+      this.sources,
+      routes,
+      this.error,
+    ]);
+    if (renderKey === this.renderKey) {
+      for (const [id, value] of [
+        ["title", this.config.title || "Mapa vehyklů"],
+        ["interval", this.config.refresh_interval ?? 30],
+      ]) {
+        const input = this.shadowRoot.querySelector(`#${id}`);
+        if (input && input !== this.shadowRoot.activeElement)
+          input.value = value;
+      }
+      return;
+    }
+    this.renderKey = renderKey;
+    const markup = `<style>:host{display:block}*{box-sizing:border-box}label{min-width:0;display:block;margin:12px 0;font-size:14px}select,input{display:block;width:100%;padding:10px;margin-top:6px;font:inherit;background:var(--card-background-color,white);color:var(--primary-text-color);border:1px solid var(--divider-color,#bbb);border-radius:8px}.stop-option{display:flex;align-items:center;gap:8px;margin:0 0 16px}.stop-option input{width:auto;margin:0}.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end;margin:10px 0}button{padding:10px;cursor:pointer}p{font-size:13px}</style><label>Zdroj dat<select id="source"><option value="">Vyberte připojení</option>${(this.sources || []).map((s) => `<option value="${esc(s.id)}" ${s.id === this.config.entry_id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}</select></label><label>Nadpis<input id="title" value="${esc(this.config.title || "Mapa vehyklů")}"></label><label>Interval obnovování (sekundy)<input id="interval" type="number" min="5" max="3600" step="1" value="${esc(this.config.refresh_interval ?? 30)}"></label><p>Výchozí interval je 30 sekund. Interval stahování dat na serveru se tím nemění.</p><p>Vyberte linky a jejich směry. Zkrácené spoje jsou zahrnuty podle směru GTFS.</p>${this.config.selections
       .map((s, i) => {
         const route = routes.find((r) => r.id === s.route_id);
         return `<div class="row"><label>Linka<select data-route="${i}"><option value="">Vyberte linku</option>${routes.map((r) => `<option value="${esc(r.id)}" ${r.id === s.route_id ? "selected" : ""}>${esc(r.line)} · ${esc(r.name)}</option>`).join("")}</select></label><label>Směr<select data-direction="${i}"><option value="*">Oba směry</option>${(route?.directions || []).map((d) => `<option value="${esc(d.id)}" ${s.direction === d.id ? "selected" : ""}>${esc(d.label || "Neuvedený směr")}</option>`).join("")}</select></label><button data-remove="${i}" aria-label="Odebrat linku">×</button></div><label class="stop-option"><input type="checkbox" data-stops="${i}" ${s.show_stops ? "checked" : ""}>Trvale zobrazovat zastávky této linky</label>`;
       })
       .join(
         "",
-      )}<button id="add" ${!routes.length || this.config.selections.length >= 20 ? "disabled" : ""}>Přidat linku</button><p role="status">${esc(this.error || "")}</p>`;
+      )}<button id="add" ${!routes.length || this.config.selections.length >= 20 ? "disabled" : ""}>Přidat linku</button><p role="status">${esc(this.error || "")}</p>${this.error ? '<button id="retry">Zkusit znovu</button>' : ""}`;
+    // HA updates hass frequently; identical content must keep the existing form nodes.
+    if (markup === this.markup) return;
+    const active = this.shadowRoot.activeElement;
+    const draft =
+      active?.tagName === "INPUT" && active.id
+        ? {
+            id: active.id,
+            value: active.value,
+            start: active.selectionStart,
+            end: active.selectionEnd,
+          }
+        : null;
+    this.markup = markup;
+    this.shadowRoot.innerHTML = markup;
+    if (draft) {
+      const input = this.shadowRoot.querySelector(`#${draft.id}`);
+      if (input) {
+        input.value = draft.value;
+        input.focus();
+        if (draft.start !== null)
+          input.setSelectionRange(draft.start, draft.end);
+      }
+    }
+    const retry = this.shadowRoot.querySelector("#retry");
+    if (retry)
+      retry.onclick = () => {
+        this.failedEntry = undefined;
+        this.loadFailed = false;
+        this.load();
+      };
     this.shadowRoot.querySelector("#source").onchange = (e) => {
       this.config = {
         ...this.config,
