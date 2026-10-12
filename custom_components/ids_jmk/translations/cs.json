@@ -9,25 +9,11 @@
           "base_url": "Adresa serveru"
         }
       },
-      "search": {
-        "title": "Vyhledat zastávku",
+      "reconfigure": {
+        "title": "Připojení k serveru IDS JMK",
+        "description": "Zadejte adresu svého serveru, například http://192.168.1.10:8080.",
         "data": {
-          "query": "Název zastávky"
-        }
-      },
-      "stop": {
-        "title": "Vybrat zastávku",
-        "data": {
-          "stop_id": "Zastávka"
-        }
-      },
-      "board": {
-        "title": "Odjezdová tabule",
-        "data": {
-          "platform": "Stanoviště",
-          "line": "Linka",
-          "direction": "Směr",
-          "limit": "Počet odjezdů"
+          "base_url": "Adresa serveru"
         }
       }
     },
@@ -35,19 +21,119 @@
       "cannot_connect": "Server není dostupný nebo nevrátil platná data.",
       "invalid_url": "Zadejte HTTP(S) adresu bez přihlašovacích údajů.",
       "not_ready": "Server právě připravuje jízdní řády. Zkuste to za chvíli.",
-      "no_stops": "Žádná zastávka nebyla nalezena."
+      "no_stops": "Žádná zastávka nebyla nalezena.",
+      "wrong_source": "Adresa patří jiné instanci serveru. Přidejte ji jako nový zdroj."
     },
     "abort": {
-      "already_configured": "Tato odjezdová tabule už je nastavená."
+      "already_configured": "Tento zdroj již je nastavený. Další tabuli přidejte pod existujícím zdrojem.",
+      "reconfigure_successful": "Adresa zdroje byla uložena."
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Nastavení tabule",
-        "data": {
-          "limit": "Počet odjezdů"
+  "config_subentries": {
+    "board": {
+      "title": "Odjezdová tabule",
+      "step": {
+        "search": {
+          "title": "Vyhledat zastávku",
+          "data": {
+            "query": "Název zastávky"
+          }
+        },
+        "stop": {
+          "title": "Vybrat zastávku",
+          "data": {
+            "stop_id": "Zastávka"
+          }
+        },
+        "board": {
+          "title": "Odjezdová tabule",
+          "data": {
+            "platform": "Stanoviště",
+            "line": "Linka",
+            "direction": "Směr",
+            "limit": "Počet odjezdů"
+          }
+        },
+        "reconfigure": {
+          "title": "Nastavení tabule",
+          "data": {
+            "limit": "Počet odjezdů"
+          }
+        },
+        "user": {
+          "title": "Vyhledat zastávku",
+          "data": {
+            "query": "Název zastávky"
+          }
         }
+      },
+      "error": {
+        "cannot_connect": "Server není dostupný nebo nevrátil platná data.",
+        "invalid_url": "Zadejte HTTP(S) adresu bez přihlašovacích údajů.",
+        "not_ready": "Server právě připravuje jízdní řády. Zkuste to za chvíli.",
+        "no_stops": "Žádná zastávka nebyla nalezena."
+      },
+      "abort": {
+        "already_configured": "Tato odjezdová tabule už je nastavená.",
+        "reconfigure_successful": "Nastavení tabule bylo uloženo."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_downloads": {
+        "name": "Celkem Stažení"
+      },
+      "total_bytes": {
+        "name": "Celkem Stažená data"
+      },
+      "gtfs_requests": {
+        "name": "GTFS Požadavky"
+      },
+      "gtfs_downloads": {
+        "name": "GTFS Stažení"
+      },
+      "gtfs_not_modified": {
+        "name": "GTFS Beze změny (304)"
+      },
+      "gtfs_errors": {
+        "name": "GTFS Chyby"
+      },
+      "gtfs_bytes": {
+        "name": "GTFS Stažená data"
+      },
+      "realtime_requests": {
+        "name": "Realtime Požadavky"
+      },
+      "realtime_downloads": {
+        "name": "Realtime Stažení"
+      },
+      "realtime_not_modified": {
+        "name": "Realtime Beze změny (304)"
+      },
+      "realtime_errors": {
+        "name": "Realtime Chyby"
+      },
+      "realtime_bytes": {
+        "name": "Realtime Stažená data"
+      },
+      "api_requests": {
+        "name": "API Požadavky"
+      },
+      "api_errors": {
+        "name": "API Chyby"
+      },
+      "api_responses_2xx": {
+        "name": "API Odpovědi 2xx"
+      },
+      "api_responses_3xx": {
+        "name": "API Odpovědi 3xx"
+      },
+      "api_responses_4xx": {
+        "name": "API Odpovědi 4xx"
+      },
+      "api_responses_5xx": {
+        "name": "API Odpovědi 5xx"
       }
     }
   }

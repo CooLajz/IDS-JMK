@@ -170,6 +170,10 @@ def create_app(settings=None):
             sources[name].update(enabled=enabled, interval_seconds=interval)
         return sources
 
+    @app.get("/api/v1/statistics/cumulative")
+    def cumulative_statistics():
+        return {**statistics.cumulative(), "instance_id": instance_id}
+
     @app.get("/api/v1/statistics")
     def statistics_view(
         period: Literal["day", "month", "year"] = "day",

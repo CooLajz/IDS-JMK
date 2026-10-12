@@ -124,6 +124,9 @@ Feed KORDIS v ověřeném vzorku uvádí u upozornění čísla/názvy linek mí
 
 ## Veřejné statistiky provozu
 
+`GET /api/v1/statistics/cumulative` vrací malý kumulativní přehled pro Home Assistant a další monitorovací klienty: `instance_id`, `generated_at`, `tracking_since` a `lifetime` se skupinami `gtfs`, `realtime`, `api` a metrikami popsanými níže. Neobsahuje denní grafy ani filtr období. Čítače pokrývají celou zachovanou historii databáze, nepodléhají dennímu resetu a fungují i před importem GTFS. Jejich hodnoty odpovídají poli `lifetime` původního statistického endpointu. Také tento dotaz se započítá do externích API požadavků až po sestavení odpovědi.
+
+
 `GET /api/v1/statistics?period=day&date=2026-10-12` vrací souhrny instance bez přihlášení. `period` přijímá `day`, `month` nebo `year`; `date` je libovolné datum ve vybraném období (výchozí dnešek, podporované roky 2000–2099). Dny a měsíce se vyhodnocují v pásmu **Europe/Prague**. Denní graf má při změně letního času 23 nebo 25 hodin; opakované hodiny rozlišuje časový posun.
 
 - `tracking_since`: začátek měření. Provoz před nasazením této funkce se zpětně nedopočítává.

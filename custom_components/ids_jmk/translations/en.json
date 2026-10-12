@@ -9,25 +9,11 @@
           "base_url": "Server URL"
         }
       },
-      "search": {
-        "title": "Search for a stop",
+      "reconfigure": {
+        "title": "Connect to IDS JMK",
+        "description": "Enter your server URL, for example http://192.168.1.10:8080.",
         "data": {
-          "query": "Stop name"
-        }
-      },
-      "stop": {
-        "title": "Select a stop",
-        "data": {
-          "stop_id": "Stop"
-        }
-      },
-      "board": {
-        "title": "Departure board",
-        "data": {
-          "platform": "Platform",
-          "line": "Line",
-          "direction": "Destination",
-          "limit": "Departure count"
+          "base_url": "Server URL"
         }
       }
     },
@@ -35,19 +21,119 @@
       "cannot_connect": "Cannot connect or invalid response.",
       "invalid_url": "Enter an HTTP(S) URL without credentials.",
       "not_ready": "The server is importing timetables. Try again shortly.",
-      "no_stops": "No stops found."
+      "no_stops": "No stops found.",
+      "wrong_source": "This URL belongs to another server instance. Add it as a new source."
     },
     "abort": {
-      "already_configured": "This board is already configured."
+      "already_configured": "This source is already configured. Add another board under the existing source.",
+      "reconfigure_successful": "Source URL saved."
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Board settings",
-        "data": {
-          "limit": "Departure count"
+  "config_subentries": {
+    "board": {
+      "title": "Departure board",
+      "step": {
+        "search": {
+          "title": "Search for a stop",
+          "data": {
+            "query": "Stop name"
+          }
+        },
+        "stop": {
+          "title": "Select a stop",
+          "data": {
+            "stop_id": "Stop"
+          }
+        },
+        "board": {
+          "title": "Departure board",
+          "data": {
+            "platform": "Platform",
+            "line": "Line",
+            "direction": "Destination",
+            "limit": "Departure count"
+          }
+        },
+        "reconfigure": {
+          "title": "Board settings",
+          "data": {
+            "limit": "Departure count"
+          }
+        },
+        "user": {
+          "title": "Search for a stop",
+          "data": {
+            "query": "Stop name"
+          }
         }
+      },
+      "error": {
+        "cannot_connect": "Cannot connect or invalid response.",
+        "invalid_url": "Enter an HTTP(S) URL without credentials.",
+        "not_ready": "The server is importing timetables. Try again shortly.",
+        "no_stops": "No stops found."
+      },
+      "abort": {
+        "already_configured": "This board is already configured.",
+        "reconfigure_successful": "Board settings saved."
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_downloads": {
+        "name": "Total Downloads"
+      },
+      "total_bytes": {
+        "name": "Total Downloaded data"
+      },
+      "gtfs_requests": {
+        "name": "GTFS Requests"
+      },
+      "gtfs_downloads": {
+        "name": "GTFS Downloads"
+      },
+      "gtfs_not_modified": {
+        "name": "GTFS Not modified (304)"
+      },
+      "gtfs_errors": {
+        "name": "GTFS Errors"
+      },
+      "gtfs_bytes": {
+        "name": "GTFS Downloaded data"
+      },
+      "realtime_requests": {
+        "name": "Realtime Requests"
+      },
+      "realtime_downloads": {
+        "name": "Realtime Downloads"
+      },
+      "realtime_not_modified": {
+        "name": "Realtime Not modified (304)"
+      },
+      "realtime_errors": {
+        "name": "Realtime Errors"
+      },
+      "realtime_bytes": {
+        "name": "Realtime Downloaded data"
+      },
+      "api_requests": {
+        "name": "API Requests"
+      },
+      "api_errors": {
+        "name": "API Errors"
+      },
+      "api_responses_2xx": {
+        "name": "API Responses 2xx"
+      },
+      "api_responses_3xx": {
+        "name": "API Responses 3xx"
+      },
+      "api_responses_4xx": {
+        "name": "API Responses 4xx"
+      },
+      "api_responses_5xx": {
+        "name": "API Responses 5xx"
       }
     }
   }

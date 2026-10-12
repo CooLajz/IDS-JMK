@@ -55,3 +55,18 @@ class Client:
         if not isinstance(result.get("departures"), list) or "generated_at" not in result:
             raise APIError("Invalid departure response")
         return result
+
+    async def statistics(self):
+        result = await self.get("statistics/cumulative")
+        metrics = ("requests", "downloads", "not_modified", "errors", "bytes",
+                   "responses_2xx", "responses_3xx", "responses_4xx", "responses_5xx")
+        lifetime = result.get("lifetime")
+        if not isinstance(lifetime, dict):
+            raise APIError("Invalid statistics response")
+        for source in ("gtfs", "realtime", "api"):
+            counters = lifetime.get(source)
+            if not isinstance(counters, dict) or any(
+                type(counters.get(key)) is not int or counters[key] < 0 for key in metrics
+            ):
+                raise APIError("Invalid statistics counters")
+        return result

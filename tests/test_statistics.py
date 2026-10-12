@@ -324,3 +324,25 @@ def test_both_real_http_sources_return_304_after_application_restart(tmp_path):
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_cumulative_endpoint_survives_restart_and_calendar_boundaries(tmp_path):
+    stats = Statistics(tmp_path)
+    for day, size in ((datetime(2025, 12, 31, 23, tzinfo=TZ), 100),
+                      (datetime(2026, 1, 1, 1, tzinfo=TZ), 200)):
+        stats.record('gtfs', at=day.timestamp(), requests=1, downloads=1, bytes=size)
+    stats.record('realtime', requests=1, not_modified=1)
+    snapshot = stats.cumulative()
+    assert snapshot['lifetime']['gtfs']['bytes'] == 300
+    assert snapshot['lifetime']['gtfs']['downloads'] == 2
+    assert snapshot['lifetime'] == stats.snapshot('day', date(2026, 1, 1))['lifetime']
+    for _ in range(2):
+        app = create_app(Settings(data_dir=tmp_path, download_enabled=False))
+        with TestClient(app) as client:
+            result = client.get('/api/v1/statistics/cumulative').json()
+            assert result['lifetime']['gtfs'] == snapshot['lifetime']['gtfs']
+            assert result['tracking_since'] == snapshot['tracking_since']
+            assert result['instance_id']
+            assert 'series' not in result
+            after = app.state.statistics.cumulative()
+            assert after['lifetime']['api']['requests'] == result['lifetime']['api']['requests'] + 1

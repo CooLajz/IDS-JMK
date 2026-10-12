@@ -94,6 +94,16 @@ class Statistics:
         states = {source: self.source_state(source) for source in SOURCES[:2]}
         return {source: {key: state.get(key) for key in allowed} for source, state in states.items()}
 
+    def cumulative(self):
+        """Small all-time snapshot for monitoring clients; no calendar reset."""
+        lifetime = {source: dict.fromkeys(METRICS, 0) for source in SOURCES}
+        with self.connect() as db:
+            started = db.execute("SELECT value FROM metadata WHERE key='started_at'").fetchone()[0]
+            sums = ",".join(f"SUM({key}) AS {key}" for key in METRICS)
+            for row in db.execute(f"SELECT source,{sums} FROM buckets GROUP BY source"):
+                lifetime[row["source"]] = {key: row[key] for key in METRICS}
+        return {"generated_at": iso(time.time()), "tracking_since": started, "lifetime": lifetime}
+
     def snapshot(self, period, anchor):
         # UTC buckets keep both repeated autumn hours distinct. Calendar grouping is Czech local time.
         if period == "day":

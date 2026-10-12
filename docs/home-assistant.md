@@ -19,11 +19,34 @@ Samotný seznam HACS může nadále zobrazovat zástupnou ikonu kvůli [známém
 V **Nastavení → Zařízení a služby → Přidat integraci → IDS JMK**:
 
 1. Zadejte adresu serveru, například `http://192.168.1.10:8080`. Pokud používáte webový kontejner, můžete zadat jeho adresu a port; `/api` proxy je jeho součástí.
-2. Vyhledejte zastávku podle názvu.
-3. Vyberte nalezenou zastávku.
+2. Vznikne zdroj se statistickými senzory. Pod tímto zdrojem zvolte **Přidat odjezdovou tabuli**.
+3. Vyhledejte zastávku podle názvu a vyberte ji.
 4. Zvolte všechna nebo konkrétní stanoviště, linku, směr a počet odjezdů.
 
-Vznikne jeden senzor. Jeho stav je počet minut do nejbližšího nezrušeného odjezdu. Atribut `departures` obsahuje celou tabulku. Při výpadku API se senzor označí jako nedostupný. Další tabuli přidejte opakováním průvodce; počet řádků lze měnit v možnostech integrace.
+Pro každou tabuli vznikne jeden senzor. Jeho stav je počet minut do nejbližšího nezrušeného odjezdu. Atribut `departures` obsahuje celou tabulku. Při výpadku API se senzor označí jako nedostupný. Další tabuli přidejte pod stejným zdrojem, bez opětovného zadávání adresy. Počet řádků lze měnit volbou **Překonfigurovat** u tabule. Další server přidejte jako novou integraci; má vlastní tabule i statistiky. Změnu adresy téhož serveru proveďte volbou **Překonfigurovat** u zdroje.
+
+Starší testovací konfigurace se automaticky nepřevádějí. Před aktualizací odeberte původní položky integrace a po restartu vytvořte zdroj a jeho tabule znovu. V dashboardech následně vyberte nové senzory a v mapové kartě nový zdroj. Tabule lze jednotlivě odebrat z podřízených konfigurací zdroje.
+
+### Kumulativní statistiky zdroje
+
+Každý zdroj má jedno zařízení API serveru a **18 diagnostických senzorů**, obnovovaných jednou za 60 sekund:
+
+- Celkový počet stažení a objem stažených dat (GTFS + realtime).
+- Zvlášť pro GTFS a realtime: požadavky, úplná stažení, odpovědi beze změny (304), chyby a přijaté bajty.
+- Pro API: požadavky, chyby a odpovědi 2xx, 3xx, 4xx a 5xx.
+
+Čítače odpovídají kumulativním hodnotám webové statistiky za celou instanci, tedy včetně ostatních klientů. Nevynulují se o půlnoci ani při restartu HA nebo serveru. Uchovávají se na serveru v `statistics.sqlite3`; po odstranění jeho dat začnou znovu. Senzory mají `state_class: total_increasing`, bajty navíc `device_class: data_size` a jednotku `B`. Při nedostupnosti API jsou senzory nedostupné, neposílají falešnou nulu. Nefunkční statistiky neblokují ostatní tabule.
+
+Denní či měsíční přehled vytvořte pomocníkem **Utility Meter** nad požadovaným senzorem; nepovolujte volbu, že vstupní hodnoty jsou přírůstky (delta). Například:
+
+```yaml
+utility_meter:
+  ids_jmk_data_den:
+    source: sensor.ids_jmk_celkem_stazena_data # Nahraďte skutečným ID senzoru.
+    cycle: daily
+```
+
+Statistiky vyžadují aktualizované API s endpointem `/api/v1/statistics/cumulative` i integraci a následný restart HA. Starší server může nadále poskytovat odjezdy, statistické senzory však zůstanou nedostupné. Dotazy integrace na statistiky se započítávají do požadavků API. Přijaté bajty označují těla odpovědí zdrojů před HTTP dekompresí, včetně částečných neúspěšných přenosů; nejde o velikost odpovědí API ani celkový síťový provoz.
 
 ## Vlastní karta IDS JMK
 
@@ -33,7 +56,7 @@ Od verze 0.1.2 integrace obsahuje vlastní kartu **IDS JMK — Odjezdová tabule
 2. V dashboardu zvolte **Upravit → Přidat kartu** a vyhledejte **IDS JMK**.
 3. Vyberte senzor odjezdové tabule. Volitelně nastavte nadpis, vzhled, počet řádků, hranici zeleného zvýraznění a zobrazení stanoviště či piktogramů. Kartu uložte.
 
-Zastávku, linku a směr určuje vybraný senzor. Karta zobrazí nejvýše tolik řádků, kolik senzor poskytuje; více odjezdů povolte v možnostech integrace. Další kartu můžete napojit na jiný senzor.
+Zastávku, linku a směr určuje vybraný senzor. Karta zobrazí nejvýše tolik řádků, kolik senzor poskytuje; více odjezdů povolte v nastavení příslušné tabule. Další kartu můžete napojit na jiný senzor.
 
 Pro ruční YAML konfiguraci stačí:
 
