@@ -6,6 +6,9 @@ permissions:
   contents: read
 jobs:
   validation:
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/ci.yaml
   check:
     needs: validation

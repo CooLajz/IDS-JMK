@@ -121,3 +121,34 @@ Při zapnutém realtime obsahuje stejná odpověď odjezdové tabule také:
 Přiřazení respektuje zastávku či stanoviště, linku a cílový směr. Není omezené počtem vypsaných odjezdů ani jejich časovým horizontem; vychází z linek a spojů obsluhujících zastávku v načteném jízdním řádu. Více podmínek jednoho GTFS selektoru platí současně, více selektorů představuje alternativy. Podporovány jsou `route_id`, `route_type`, `direction_id`, `stop_id` a `trip` obsahující pouze `trip_id`. Selektory s dalšími nepodporovanými podmínkami (například `agency_id` či datum konkrétní jízdy uvnitř `trip`) se nepřiřazují, aby nedošlo k rozšíření jejich platnosti.
 
 Feed KORDIS v ověřeném vzorku uvádí u upozornění čísla/názvy linek místo GTFS ID. Nejprve se proto hledá skutečné `route_id`; pouze pokud v jízdním řádu neexistuje, zkusí se shoda s názvem linky bez rozlišení velikosti písmen. Linkové upozornění **nepotvrzuje dopad na konkrétní zastávku nebo směr**. Web jej označuje jako omezení na lince a nad odjezdovou tabulí nabízí rozbalení původního textu s podrobnostmi.
+
+## Veřejné statistiky provozu
+
+`GET /api/v1/statistics?period=day&date=2026-10-12` vrací souhrny instance bez přihlášení. `period` přijímá `day`, `month` nebo `year`; `date` je libovolné datum ve vybraném období (výchozí dnešek, podporované roky 2000–2099). Dny a měsíce se vyhodnocují v pásmu **Europe/Prague**. Denní graf má při změně letního času 23 nebo 25 hodin; opakované hodiny rozlišuje časový posun.
+
+- `tracking_since`: začátek měření. Provoz před nasazením této funkce se zpětně nedopočítává.
+- `sources.gtfs` a `sources.realtime`: zapnutí stahování, interval, poslední kontrola (`last_checked_at`), úplné stažení (`last_downloaded_at`), úspěšné zpracování nebo potvrzení 304 (`last_success_at`), HTTP stav, poslední chyba, velikost posledního souboru a HTTP `Last-Modified`.
+- `totals`: součty vybraného období, zvlášť pro `gtfs`, `realtime` a `api`.
+- `lifetime`: součty od začátku měření.
+- `series`: hodinové, denní nebo měsíční body pro grafy; obsahují stejné skupiny a metriky jako `totals`.
+- `api_endpoints`: součty externích dotazů podle metody a šablony endpointu (například `GET /api/v1/stops/{stop_id}/departures`). Neobsahují skutečná ID, vyhledávací řetězce ani IP adresy. Neznámé cesty se slučují do `unmatched`.
+
+Metriky stahování:
+
+| Pole | Význam |
+| --- | --- |
+| `requests` | Pokusy o kontrolu zdroje, včetně odpovědí 304 a chyb. Přesměrování je součástí jednoho pokusu. |
+| `downloads` | Úplně přijaté soubory HTTP 200; včetně souborů následně odmítnutých při zpracování. |
+| `not_modified` | Platné odpovědi HTTP 304 při dostupné lokální kopii. |
+| `errors` | Selhání spojení, HTTP chyby, překročení velikosti nebo neúspěšné zpracování. |
+| `bytes` | Přijaté bajty těla konečné odpovědi před rozbalením HTTP komprese. Bez HTTP hlaviček, přesměrovacích těl a TLS; nejde o fakturační měření síťového provozu. Zahrnují i již přijaté části neúspěšných downloadů. |
+
+Pro `api` se počítají dokončené požadavky na `/api/`, chyby 4xx/5xx a počty odpovědí `responses_2xx` až `responses_5xx`. Aktuální dotaz na statistiky se objeví až v následující odpovědi. Healthchecky, dokumentace a statické soubory se nepočítají. Naše webové rozhraní posílá hlavičku `X-IDS-JMK-Client: web`, která jeho požadavky z čítačů vynechá. Jde o konvenci pro rozlišení klientů, nikoli ověření jejich identity; externí klient může stejnou hlavičku také poslat. Běžné požadavky HA, Živého obrazu a ostatních klientů bez této hlavičky se počítají.
+
+Statistiky a HTTP validátory se ukládají do `statistics.sqlite3` v `DATA_DIR`, tedy do stejného persistentního svazku jako jízdní řády. Zachovejte celý svazek při restartu nebo aktualizaci. Statistiky se ukládají jako hodinové součty, bez jednotlivých přístupových záznamů. Veřejný endpoint funguje i před prvním importem GTFS a při vypnutém realtime. Přehled `sources` je také v `/api/v1/status` pod klíčem `downloads`.
+
+### Podmíněné stahování
+
+Oba zdroje používají `If-None-Match` a `If-Modified-Since`, pokud zdroj dříve poskytl `ETag` nebo `Last-Modified` a server má odpovídající platná lokální data. HTTP 304 nevyvolá nové zpracování a neposune čas posledního stažení. Bez podpory validátorů se soubor stáhne běžným GETem. Poškozený či neúplný soubor nepřepíše validátory poslední přijaté verze.
+
+Validátory platí pouze pro konkrétní zdrojovou URL a lokální verzi dat. Změna URL, chybějící data nebo neplatná realtime kopie vynutí celé stažení. Realtime kopie se ukládá do `realtime-cache.dat`; při restartu se ověří její otisk. Obnovení z disku ani odpověď 304 **neomlazují čas feedu nebo vozidel**. Posouzení stáří dál používá původní čas poskytovatele. Při `REALTIME_ENABLED=false` se uložená realtime kopie nepoužije.

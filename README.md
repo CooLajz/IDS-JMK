@@ -67,6 +67,25 @@ Pro lokální sestavení tohoto režimu:
 docker compose -f compose.proxy.yaml -f compose.build.yaml up -d --build
 ```
 
+### Vývojové verze z hlavní větve
+
+Po každém pushi do větve `main` workflow **Kontroly** spustí testy a po jejich úspěchu publikuje oba vývojové obrazy pro Linux AMD64 a ARM64:
+
+- `ghcr.io/coolajz/ids-jmk-api:dev`
+- `ghcr.io/coolajz/ids-jmk-web:dev`
+
+Tag `dev` označuje poslední publikovanou vývojovou verzi. Každý obraz dostane také tag `dev-<celý SHA commitu>` pro nasazení konkrétní revize. Nový push ruší starší probíhající běh kontrol pro stejnou větev; při rychlém sledu pushů se tedy publikuje nejnovější úspěšně dokončený běh. Publikování vývojových obrazů nemění stabilní tag `latest` ani vydané verze. Pull requesty a ostatní větve se pouze testují.
+
+Pro testování za reverse proxy ponechte v Portaineru repozitář, větev `refs/heads/main` a cestu `compose.proxy.yaml`. V **Environment variables** nastavte `IMAGE_TAG=dev`. Poté:
+
+1. Vyčkejte, až na GitHubu úspěšně skončí celý workflow **Kontroly**, včetně publikování API i webu.
+2. V Portaineru použijte **Pull and redeploy** a zapněte **Re-pull image** (podle verze **Re-pull image and redeploy**), aby se stáhl nový obsah tagu `dev`.
+3. Po aktualizaci ověřte, že oba kontejnery hlásí stav `healthy`.
+
+Oba obrazy se publikují samostatně. Pokud některé publikování selže nebo je běh přerušen, nenasazujte jej; vyčkejte na úspěšné dokončení obou obrazů. Pro návrat ke konkrétnímu úspěšnému běhu nastavte `IMAGE_TAG=dev-<celý SHA commitu>`, případně pro návrat ke stabilní verzi použijte její číselný tag. Datový svazek při aktualizaci zachovejte.
+
+Samotná kontrola změn Gitu v Portaineru nezaručuje nasazení nového obrazu: může proběhnout ještě před dokončením sestavení a později už nenajít nový commit. Automatizace nasazení proto musí navazovat až na úspěšné publikování obou obrazů. Tento workflow automatizuje publikování, nikoli aktualizaci běžícího serveru. Podrobnosti k ruční aktualizaci popisuje [dokumentace Portaineru](https://docs.portainer.io/user/docker/stacks/edit).
+
 ### Nastavení API
 
 | Proměnná | Výchozí hodnota | Význam |

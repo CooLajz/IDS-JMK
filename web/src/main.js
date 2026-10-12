@@ -1,4 +1,5 @@
 import "leaflet/dist/leaflet.css";
+import { setupStatistics } from "./statistics.js";
 import L from "leaflet";
 import { renderAlerts } from "./alerts.js";
 import { vehicleIcon, mdiIcon, mdiBicycle, mdiWheelchairAccessibility } from "./transport-icons.js";
@@ -61,6 +62,7 @@ function notice(text, error = false) {
 async function api(path) {
   const res = await fetch(`/api/v1/${path}`, {
     signal: AbortSignal.timeout(15000),
+    headers: { "X-IDS-JMK-Client": "web" },
   });
   const data = await res.json();
   if (!res.ok)
@@ -683,4 +685,5 @@ setInterval(() => {
 }, 1000);
 document.addEventListener("visibilitychange", refreshVisible);
 window.addEventListener("online", refreshVisible);
+setupStatistics();
 init();

@@ -11,7 +11,7 @@
     <header>
       <a class="brand" href="/" aria-label="IDS JMK — úvod"
         ><span class="brand-mark" aria-hidden="true"></span>IDS JMK</a
-      ><a href="/docs" target="_blank" rel="noopener">API ↗</a>
+      ><nav aria-label="Nástroje"><button id="open-statistics" class="quiet">Statistiky</button><a href="/docs" target="_blank" rel="noopener">API ↗</a></nav>
     </header>
     <main>
       <h1>Odjezdy</h1>
@@ -123,6 +123,7 @@
           <button id="fullscreen" class="quiet">Celá obrazovka</button>
         </div>
       </section>
+      <section id="source-summary" class="source-summary" aria-label="Aktualizace zdrojových souborů"></section>
     </main>
     <footer>
       <a
@@ -140,6 +141,24 @@
         ></span
       >
     </footer>
+    <dialog id="statistics-dialog" aria-labelledby="statistics-title">
+      <div class="dialog-top">
+        <div><p class="stats-eyebrow">PROVOZ SERVERU</p><h2 id="statistics-title">Statistiky</h2></div>
+        <button id="close-statistics">Zavřít</button>
+      </div>
+      <p class="stats-intro">Kolik dat server stahuje a kolik požadavků obslouží. Dotazy našeho webu se do statistik API nezapočítávají.</p>
+      <div class="stats-controls">
+        <div><label for="stats-period">Období</label><select id="stats-period"><option value="day">Den · po hodinách</option><option value="month">Měsíc · po dnech</option><option value="year">Rok · po měsících</option></select></div>
+        <div><label for="stats-date">Datum v období</label><input id="stats-date" type="date" min="2000-01-01" max="2099-12-31"></div>
+        <div><label for="stats-metric">Grafy stahování</label><select id="stats-metric"><option value="counts">Dotazy a stažení</option><option value="bytes">Přenesená data</option></select></div>
+      </div>
+      <div class="stats-navigation"><button id="stats-prev" aria-label="Předchozí období">←</button><h3 id="stats-range"></h3><button id="stats-next" aria-label="Následující období">→</button><button id="stats-refresh" class="outline">Obnovit</button></div>
+      <p id="stats-notice" role="status" aria-live="polite"></p>
+      <div id="stats-content"></div>
+      <p id="stats-since" class="stats-caption"></p>
+      <p class="stats-caption">Přenos zahrnuje těla odpovědí zdrojových souborů před rozbalením HTTP komprese, bez hlaviček a TLS. Odpověď 304 se počítá jako dotaz, nikoli stažení. Úplně přijatý soubor se počítá i při neúspěšném zpracování.</p>
+      <p class="stats-caption">API statistiky zahrnují externí požadavky na /api/ včetně chyb. Nezahrnují označené požadavky našeho webu, healthchecky ani statické soubory. Neukládají IP adresy ani hledané zastávky. Historie je dostupná od zahájení měření; starší provoz nelze zpětně dopočítat.</p>
+    </dialog>
     <dialog id="detail">
       <div class="dialog-top">
         <h2 id="detail-title">Detail spoje</h2>

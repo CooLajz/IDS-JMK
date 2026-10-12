@@ -1,18 +1,23 @@
 import asyncio
+import hashlib
 import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import date as Date
 from datetime import datetime
+from typing import Literal
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from .config import Settings
+from .downloads import SourceDownloader, source_key
 from .gtfs import TZ, Timetable, iso
 from .models import DepartureBoard
 from .realtime import Realtime
+from .statistics import Statistics, StatisticsMiddleware
 
 LOG = logging.getLogger("ids_jmk")
 
@@ -28,46 +33,79 @@ def create_app(settings=None):
         id_file.write_text(str(uuid.uuid4()))
     instance_id = id_file.read_text().strip()
 
-    async def download(client, url, path, maximum):
-        total = 0
-        async with client.stream("GET", url) as response:
-            response.raise_for_status()
-            with path.open("wb") as out:
-                async for chunk in response.aiter_bytes():
-                    total += len(chunk)
-                    if total > maximum:
-                        raise ValueError("Stažený soubor je příliš velký")
-                    out.write(chunk)
+    statistics = Statistics(timetable.directory)
+    downloader = SourceDownloader(statistics)
+    rt_cache = timetable.directory / "realtime-cache.dat"
+    rt_identity = None
+    rt_state = statistics.source_state("realtime")
+    if (
+        settings.realtime_enabled
+        and rt_cache.exists()
+        and rt_state.get("url_key") == source_key(settings.realtime_url)
+    ):
+        try:
+            data = rt_cache.read_bytes()
+            digest = hashlib.sha256(data).hexdigest()
+            if digest == rt_state.get("cache_identity"):
+                realtime.ingest(data)
+                rt_identity = digest
+        except Exception:
+            LOG.warning("Uložený realtime nelze obnovit; bude stažen znovu")
+    state["gtfs_last_checked"] = statistics.source_state("gtfs").get("last_checked_at")
+
+    async def accept_static(target):
+        state["importing"] = True
+        try:
+            await asyncio.to_thread(timetable.import_zip, target)
+            return timetable.metadata()["sha256"]
+        finally:
+            state["importing"] = False
+
+    async def accept_realtime(target):
+        nonlocal rt_identity
+        data = target.read_bytes()
+        candidate = Realtime(settings.realtime_max_age)
+        candidate.snapshot = realtime.snapshot
+        candidate.ingest(data)
+        target.replace(rt_cache)
+        realtime.snapshot = candidate.snapshot
+        rt_identity = hashlib.sha256(data).hexdigest()
+        return rt_identity
 
     async def static_loop(client):
         while True:
-            target = timetable.directory / "gtfs-download.tmp"
             try:
-                state["importing"] = True
-                await download(client, settings.gtfs_url, target, 100 * 1024 * 1024)
-                await asyncio.to_thread(timetable.import_zip, target)
+                await downloader.update(
+                    client,
+                    "gtfs",
+                    settings.gtfs_url,
+                    timetable.directory / "gtfs-download.tmp",
+                    100 * 1024 * 1024,
+                    lambda: timetable.metadata().get("sha256"),
+                    accept_static,
+                )
                 state.update(gtfs_last_checked=iso(time.time()), gtfs_error=None)
             except Exception as exc:
-                # URL credentials and response bodies must not leak into logs or public status.
                 state["gtfs_error"] = type(exc).__name__
                 LOG.warning("Import GTFS selhal: %s", type(exc).__name__)
-            finally:
-                state["importing"] = False
-                target.unlink(missing_ok=True)
             await asyncio.sleep(settings.gtfs_interval if not state["gtfs_error"] else 60)
 
     async def realtime_loop(client):
         while True:
-            target = timetable.directory / "rt-download.tmp"
             try:
-                await download(client, settings.realtime_url, target, 20 * 1024 * 1024)
-                realtime.ingest(target.read_bytes())
+                await downloader.update(
+                    client,
+                    "realtime",
+                    settings.realtime_url,
+                    timetable.directory / "rt-download.tmp",
+                    20 * 1024 * 1024,
+                    lambda: rt_identity,
+                    accept_realtime,
+                )
                 state["realtime_error"] = None
             except Exception as exc:
                 state["realtime_error"] = type(exc).__name__
                 LOG.warning("Aktualizace realtime selhala: %s", type(exc).__name__)
-            finally:
-                target.unlink(missing_ok=True)
             await asyncio.sleep(settings.realtime_interval)
 
     @asynccontextmanager
@@ -98,6 +136,8 @@ def create_app(settings=None):
         lifespan=lifespan,
         description="Odjezdy a polohy vozidel. Vlastní odhady jsou označeny vehicle_estimate.",
     )
+    app.add_middleware(StatisticsMiddleware, statistics=statistics)
+    app.state.statistics = statistics
     app.state.timetable = timetable
     app.state.realtime = realtime
 
@@ -120,6 +160,27 @@ def create_app(settings=None):
         ready()
         return {"status": "ready"}
 
+    def source_status():
+        sources = statistics.public_sources()
+        for name, enabled, interval in (
+            ("gtfs", settings.download_enabled, settings.gtfs_interval),
+            ("realtime", settings.download_enabled and settings.realtime_enabled, settings.realtime_interval),
+        ):
+            sources[name].update(enabled=enabled, interval_seconds=interval)
+        return sources
+
+    @app.get("/api/v1/statistics")
+    def statistics_view(
+        period: Literal["day", "month", "year"] = "day",
+        date: Date | None = Query(None, description="Datum ve zvoleném období, časové pásmo Europe/Prague."),
+    ):
+        anchor = date or datetime.now(TZ).date()
+        if not 2000 <= anchor.year <= 2099:
+            raise HTTPException(422, "Datum musí být v letech 2000–2099")
+        result = statistics.snapshot(period, anchor)
+        result["sources"] = source_status()
+        return result
+
     @app.get("/api/v1/status")
     def status():
         meta = timetable.metadata()
@@ -130,6 +191,7 @@ def create_app(settings=None):
             "ready": timetable.ready,
             **state,
             "schedule": meta,
+            "downloads": source_status(),
             "schedule_expired": bool(valid_to and valid_to < datetime.now(TZ).strftime("%Y%m%d")),
             "realtime": {
                 "enabled": True,
