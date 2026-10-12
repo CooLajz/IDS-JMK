@@ -28,6 +28,25 @@ def catalogue(timetable):
         return {"routes": routes}
 
 
+def map_stops(timetable, selections):
+    """All stop occurrences on selected route variants, independent of live vehicles."""
+    if not selections:
+        return {"stops": []}
+    conditions, args = [], []
+    for route_id, direction in sorted({(s.route_id, s.direction) for s in selections}):
+        conditions.append("(t.route_id=? AND (?='*' OR t.direction=?))")
+        args.extend((route_id, direction, direction))
+    with timetable.connect() as db:
+        rows = db.execute(
+            """SELECT DISTINCT t.route_id,t.direction,r.line,s.id AS stop_id,s.name,s.lat,s.lon
+            FROM trips t JOIN routes r ON r.id=t.route_id
+            JOIN times st ON st.trip_id=t.id JOIN stops s ON s.id=st.stop_id
+            WHERE """ + " OR ".join(conditions) + " ORDER BY r.line,s.name,s.id,t.direction",
+            args,
+        )
+        return {"stops": [dict(row) for row in rows]}
+
+
 def map_vehicles(timetable, realtime, selections, enabled, now=None):
     now = now or datetime.now(TZ)
     result = {

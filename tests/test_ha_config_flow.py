@@ -97,6 +97,10 @@ def test_map_bridge_uses_entry_and_fixed_paths():
             client.return_value.get.assert_awaited_once_with('map/vehicles', payload=msg['selections'])
             connection.send_result.assert_called_once_with(1, {'vehicles': []})
             client.return_value.get.reset_mock()
+            msg['action'] = 'stops'
+            await handler(hass, connection, msg)
+            client.return_value.get.assert_awaited_once_with('map/stops', payload=msg['selections'])
+            client.return_value.get.reset_mock()
             entry.domain = 'other'
             await handler(hass, connection, msg)
             client.return_value.get.assert_not_awaited()

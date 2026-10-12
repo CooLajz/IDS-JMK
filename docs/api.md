@@ -172,3 +172,9 @@ Validátory platí pouze pro konkrétní zdrojovou URL a lokální verzi dat. Zm
 HA zpřístupňuje tyto pevně vymezené operace přihlášeným klientům pomocí příkazů
 `ids_jmk/map_sources` a `ids_jmk/map`. Mapová data nevytvářejí entity a neukládají
 se do Recorderu.
+
+- `POST /api/v1/map/stops`: stejné pole výběru linek a směrů jako pro vozidla
+  (nejvýše 20 položek). Vrací `stops` s `stop_id`, `name`, `lat`, `lon`,
+  `route_id`, `line` a `direction`. Obsahuje zastávky všech variant linky
+  ve vybraných směrech, nezávisle na realtime a aktuálně jedoucích vozidlech.
+  HA tuto operaci předává akcí `stops` v příkazu `ids_jmk/map`.

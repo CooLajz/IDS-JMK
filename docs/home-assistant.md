@@ -153,12 +153,20 @@ směry. Filtry mapy jsou nezávislé na zastávce a odjezdech zdrojové tabule.
 Směry vycházejí z GTFS `direction_id`; názvy nabízejí nejčastější cíle a zahrnují
 i zkrácené spoje stejného směru. Výběr používá `route_id`, nikoli jen číslo linky.
 
-Karta se obnovuje každých 30 sekund, server nadále dodržuje vlastní interval
-stahování realtime. Zobrazuje pouze čerstvé použitelné polohy. Při chybě připojení,
+Interval obnovování nastavíte v editoru karty (5–3600 sekund, výchozí 30).
+Server nadále dodržuje vlastní interval stahování realtime. Zobrazuje pouze čerstvé použitelné polohy. Při chybě připojení,
 zastarání dat nebo vypnutém realtime značky zmizí a karta zobrazí vysvětlení.
 Kliknutím na vozidlo zobrazíte detail a zastávky celého spoje. Přerušovaná čára
 je pouze orientační spojnice zastávek: aktuální zdroj GTFS neobsahuje `shapes.txt`.
-Tlačítkem **Přehled** přizpůsobíte mapu všem zobrazeným vozidlům.
+Kliknutím do volného místa mapy detail zavřete a spojnice zmizí. U každé linky
+můžete zapnout **Trvale zobrazovat zastávky této linky**: zobrazí se zastávky všech
+variant vybraného směru i bez aktuálně jedoucího vozidla. Mimo detail se čáry
+tras nezobrazují. Zastávky se načítají při otevření karty nebo změně konfigurace;
+obnovování poloh je znovu nestahuje.
+
+Přepínač **Přehled** zapíná automatické přizpůsobování mapy všem zobrazeným
+vozidlům při každé obnově. Při otevření detailu zůstanou všechna vozidla ve výřezu.
+Po vypnutí Přehledu můžete mapu posouvat a přibližovat ručně.
 
 Je nutné aktualizovat **API i integraci**, restartovat HA a obnovit dashboard.
 Karta se registruje automaticky stejně jako tabule a upozornění. Připojení
@@ -173,7 +181,9 @@ Konfiguraci vytváří vizuální editor; odpovídající YAML má tuto struktur
 type: custom:ids-jmk-map-card
 title: Mapa vehyklů
 entry_id: ID_PRIPOJENI_Z_EDITORU
+refresh_interval: 30
 selections:
   - route_id: ID_LINKY_Z_EDITORU
     direction: "*" # Oba směry; konkrétní směr má hodnotu z GTFS.
+    show_stops: true # Trvale zobrazovat zastávky této linky.
 ```

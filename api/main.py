@@ -18,7 +18,7 @@ from .gtfs import TZ, Timetable, iso
 from .models import DepartureBoard, MapSelection
 from .realtime import Realtime
 from .statistics import Statistics, StatisticsMiddleware
-from .vehicle_map import catalogue, map_vehicles
+from .vehicle_map import catalogue, map_stops, map_vehicles
 
 LOG = logging.getLogger("ids_jmk")
 
@@ -282,6 +282,13 @@ def create_app(settings=None):
     def map_routes():
         ready()
         return catalogue(timetable)
+
+    @app.post("/api/v1/map/stops")
+    def selected_stops(selections: list[MapSelection]):
+        ready()
+        if len(selections) > 20:
+            raise HTTPException(422, "Vyberte nejvýše 20 linek.")
+        return map_stops(timetable, selections)
 
     @app.post("/api/v1/map/vehicles")
     def selected_vehicles(selections: list[MapSelection]):

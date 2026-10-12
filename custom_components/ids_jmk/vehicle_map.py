@@ -28,7 +28,7 @@ def sources(hass, connection, msg):
     {
         vol.Required("type"): "ids_jmk/map",
         vol.Required("entry_id"): str,
-        vol.Required("action"): vol.In(["routes", "vehicles", "trip"]),
+        vol.Required("action"): vol.In(["routes", "vehicles", "stops", "trip"]),
         vol.Optional("selections", default=[]): vol.All(
             [
                 {
@@ -52,8 +52,8 @@ async def request(hass, connection, msg):
     try:
         if msg["action"] == "routes":
             result = await client.get("map/routes")
-        elif msg["action"] == "vehicles":
-            result = await client.get("map/vehicles", payload=msg["selections"])
+        elif msg["action"] in ("vehicles", "stops"):
+            result = await client.get(f"map/{msg['action']}", payload=msg["selections"])
         else:
             if not msg.get("trip_id") or not msg.get("service_date"):
                 connection.send_error(msg["id"], "invalid_format", "Chybí spoj nebo provozní den.")

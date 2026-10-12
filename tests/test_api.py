@@ -640,5 +640,32 @@ def test_map_api_contract(tmp_path):
         data = client.post("/api/v1/map/vehicles", json=[selection]).json()
         assert data["realtime_enabled"] is False
         assert data["vehicles"] == []
+        stops = client.post("/api/v1/map/stops", json=[selection]).json()["stops"]
+        assert {s["stop_id"] for s in stops} == {"A", "B", "C"}
+        assert client.post("/api/v1/map/stops", json=[]).json() == {"stops": []}
+        assert client.post("/api/v1/map/stops", json=[selection] * 21).status_code == 422
         assert client.post("/api/v1/map/vehicles", json=[selection] * 21).status_code == 422
         assert client.post("/api/v1/map/vehicles", json=[{"route_id": ""}]).status_code == 422
+
+
+def test_map_stops_include_all_variants_without_live_vehicles(timetable):
+    import sqlite3
+
+    from api.models import MapSelection
+    from api.vehicle_map import map_stops
+
+    # A different direction shares some stops but has its own platform.
+    with sqlite3.connect(timetable.path) as db:
+        db.execute("UPDATE trips SET direction='1' WHERE id='N'")
+        db.execute("UPDATE times SET stop_id='P' WHERE trip_id='N' AND seq=1")
+        db.commit()
+    forward = map_stops(timetable, [MapSelection(route_id='R', direction='0')])['stops']
+    assert {s['stop_id'] for s in forward} == {'A', 'B', 'C'}
+    assert all(s['direction'] == '0' for s in forward)
+    backward = map_stops(timetable, [MapSelection(route_id='R', direction='1')])['stops']
+    assert {s['stop_id'] for s in backward} == {'P', 'C'}
+    both = map_stops(timetable, [MapSelection(route_id='R')])['stops']
+    assert len(both) == 5
+    assert all(s['route_id'] == 'R' and s['line'] == '501' for s in both)
+    assert map_stops(timetable, []) == {'stops': []}
+    assert map_stops(timetable, [MapSelection(route_id="R' OR 1=1 --")]) == {'stops': []}
