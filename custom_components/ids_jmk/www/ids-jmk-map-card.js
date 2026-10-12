@@ -8,6 +8,27 @@ const esc = (value) =>
         c
       ],
   );
+// Match the transport symbols used by the departures card.
+const TRANSPORT_ICONS = {
+  tram: "tram",
+  bus: "bus",
+  rail: "train",
+  trolleybus: "bus-electric",
+  subway: "subway-variant",
+  ferry: "ferry",
+  aerial_lift: "gondola",
+  cable_tram: "tram",
+  funicular: "train",
+  monorail: "train",
+};
+const directionColor = (direction) =>
+  String(direction) === "0"
+    ? "#16834a"
+    : String(direction) === "1"
+      ? "#1769c2"
+      : "#586777";
+const vehicleIcon = (mode) =>
+  Object.hasOwn(TRANSPORT_ICONS, mode) ? TRANSPORT_ICONS[mode] : "map-marker";
 let leaflet;
 function loadMap() {
   if (window.L) return Promise.resolve(window.L);
@@ -25,7 +46,7 @@ function loadMap() {
     });
   return leaflet;
 }
-const css = `:host{display:block}*{box-sizing:border-box}ha-card{display:block;overflow:hidden;background:var(--ha-card-background,var(--card-background-color,#fff));color:var(--primary-text-color,#172b3a);border-radius:16px}header{padding:16px;display:flex;align-items:center;gap:10px}h2{font-size:18px;margin:0;flex:1}button,select{font:inherit;padding:8px;border:1px solid var(--divider-color,#ccc);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#172b3a)}button{cursor:pointer}.status,.detail{padding:10px 16px;font-size:13px;line-height:1.5}.status{color:var(--secondary-text-color,#536475)}.map{height:var(--map-height,400px);isolation:isolate;background:#e6ede9}.vehicle{background:#006d77;color:white;border:2px solid white;border-radius:12px;text-align:center;font:bold 13px/26px sans-serif;box-shadow:0 2px 6px #0005;white-space:nowrap}.leaflet-container{font-family:inherit}.detail:empty{display:none}.detail ol{max-height:150px;overflow:auto;padding-left:22px}.credit{padding:8px 16px;font-size:11px}.credit a{color:var(--primary-color,#006d77)}@media(max-width:450px){header{padding:12px}h2{font-size:16px}}`;
+const css = `:host{display:block}*{box-sizing:border-box}ha-card{display:block;overflow:hidden;background:var(--ha-card-background,var(--card-background-color,#fff));color:var(--primary-text-color,#172b3a);border-radius:16px}header{padding:12px 16px;display:flex;align-items:center;gap:12px}.heading{flex:1;min-width:0}h2{font-size:18px;line-height:1.3;margin:0;overflow-wrap:anywhere}header button{flex-shrink:0}button,select{font:inherit;padding:8px;border:1px solid var(--divider-color,#ccc);border-radius:8px;background:var(--card-background-color,#fff);color:var(--primary-text-color,#172b3a)}button{cursor:pointer}.detail{padding:10px 16px;font-size:13px;line-height:1.5}.status{margin-top:4px;font-size:12px;line-height:1.4;overflow-wrap:anywhere;color:var(--secondary-text-color,#536475)}.map{height:var(--map-height,400px);isolation:isolate;background:#e6ede9}.vehicle{background:none;border:0;text-align:center;white-space:nowrap}.vehicle-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:var(--vehicle-color);color:white;border:2px solid white;border-radius:12px;box-shadow:0 2px 6px #0005;font:bold 13px/16px sans-serif}.vehicle ha-icon{display:block;width:26px;height:26px;--mdc-icon-size:26px}.vehicle-number{display:block;max-width:100%;padding:0 2px;overflow:hidden;text-overflow:ellipsis}.leaflet-container{font-family:inherit}.detail:empty{display:none}.detail ol{max-height:150px;overflow:auto;padding-left:22px}@media(max-width:450px){header{padding:12px}h2{font-size:16px}}`;
 class MapCard extends HTMLElement {
   constructor() {
     super();
@@ -94,7 +115,7 @@ class MapCard extends HTMLElement {
     )
       return;
     this.initializing = true;
-    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="/ids_jmk/map-vendor/leaflet.css"><style>${css}</style><ha-card><header><h2>${esc(this.config.title || "Mapa vehyklů")}</h2><button title="Zobrazit všechna vozidla">Přehled</button></header><div class="status" role="status">Načítání mapy…</div><div class="map" aria-label="Mapa vozidel IDS JMK"></div><div class="detail"></div><div class="credit">Data: <a href="https://www.idsjmk.cz/" target="_blank" rel="noopener">KORDIS JMK</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></div></ha-card>`;
+    this.shadowRoot.innerHTML = `<link rel="stylesheet" href="/ids_jmk/map-vendor/leaflet.css"><style>${css}</style><ha-card><header><div class="heading"><h2>${esc(this.config.title || "Mapa vehyklů")}</h2><div class="status" role="status">Načítání mapy…</div></div><button title="Zobrazit všechna vozidla">Přehled</button></header><div class="map" aria-label="Mapa vozidel IDS JMK"></div><div class="detail"></div></ha-card>`;
     this.status = this.shadowRoot.querySelector(".status");
     this.detail = this.shadowRoot.querySelector(".detail");
     try {
@@ -169,9 +190,9 @@ class MapCard extends HTMLElement {
           title: `${v.line} → ${v.destination}`,
           icon: this.L.divIcon({
             className: "vehicle",
-            html: esc(v.line),
-            iconSize: [48, 30],
-            iconAnchor: [24, 15],
+            html: `<span class="vehicle-badge" style="--vehicle-color:${directionColor(v.direction)}"><ha-icon icon="mdi:${vehicleIcon(v.transport_mode)}" aria-hidden="true"></ha-icon><span class="vehicle-number">${esc(v.line)}</span></span>`,
+            iconSize: [44, 52],
+            iconAnchor: [22, 26],
           }),
         })
           .addTo(this.markers)
@@ -225,12 +246,16 @@ class MapCard extends HTMLElement {
       );
       this.L.polyline(
         stops.map((s) => [s.lat, s.lon]),
-        { color: "#006d77", weight: 3, dashArray: "6 8" },
+        {
+          color: directionColor(vehicle.direction),
+          weight: 3,
+          dashArray: "6 8",
+        },
       ).addTo(this.route);
       for (const stop of stops)
         this.L.circleMarker([stop.lat, stop.lon], {
           radius: 4,
-          color: "#006d77",
+          color: directionColor(vehicle.direction),
           fillOpacity: 1,
           fillColor: "white",
         })
