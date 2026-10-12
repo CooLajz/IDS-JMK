@@ -74,6 +74,7 @@ const styles = `
   .labels { padding:0 16px 9px; font-size:9px; text-transform:uppercase; letter-spacing:.2px; color:var(--secondary-text-color, #657267); }
   .labels span { white-space:nowrap; }
   .labels span:nth-child(n+3) { text-align:center; }
+  .labels span:last-child { text-align:right; }
   .no-header .labels { padding-top:12px; }
   .compact.no-header .labels { padding-top:6px; }
   .rows { list-style:none; padding:0; margin:0; }
@@ -102,10 +103,10 @@ const styles = `
   .modern .meta { display:inline-block; }
   .scheduled { text-align:center; font-size:15px; line-height:24px; font-weight:650; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .delay { text-align:center; font-size:12px; line-height:24px; color:var(--warning-color, #986200); white-space:nowrap; }
-  .countdown { display:grid; place-items:center; height:34px; border-radius:8px; font-size:25px; line-height:1; font-weight:750; font-variant-numeric:tabular-nums; }
+  .countdown { display:grid; align-items:center; justify-items:end; text-align:right; height:34px; font-size:25px; line-height:1; font-weight:750; font-variant-numeric:tabular-nums; }
   .countdown.long-number { font-size:20px; }
   .countdown.word { font-size:10px; }
-  .countdown.upcoming { background:#d9f6df; color:#155d2b; }
+  .countdown.upcoming { color:var(--success-color, #4b944d); }
   .departed { opacity:.55; }
   .cancelled .destination-text, .cancelled .scheduled { text-decoration:line-through; }
   footer { display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; justify-content:space-between; padding:12px 20px; border-top:1px solid var(--divider-color, #e6eae6); font-size:10px; color:var(--secondary-text-color, #657267); }
@@ -127,7 +128,7 @@ const styles = `
   .compact .meta { font-size:9px; padding:0 2px; max-width:32px; }
   .compact .scheduled { font-size:13px; }
   .compact .delay { font-size:11px; }
-  .compact .countdown { font-size:20px; height:24px; border-radius:5px; }
+  .compact .countdown { font-size:20px; height:24px; }
   .compact .countdown.long-number { font-size:16px; }
   .compact .countdown.word { font-size:9px; }
   .compact footer { padding:6px 10px; font-size:9px; }
