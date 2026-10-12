@@ -14,7 +14,7 @@ class DeparturesSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:bus-clock"
     _attr_native_unit_of_measurement = "min"
     # Rows change frequently and are useful live, not as recorder history.
-    _unrecorded_attributes = frozenset({"departures", "generated_at"})
+    _unrecorded_attributes = frozenset({"departures", "generated_at", "alerts", "alerts_updated_at"})
 
     def __init__(self, coordinator, entry):
         super().__init__(coordinator)
@@ -32,6 +32,11 @@ class DeparturesSensor(CoordinatorEntity, SensorEntity):
         data = self.coordinator.data
         return {
             "departures": data["departures"],
+            "realtime_enabled": data.get("realtime_enabled", True),
+            "alerts": data.get("alerts", []),
+            "alerts_supported": "alerts" in data,
+            "alerts_stale": data.get("alerts_stale", True),
+            "alerts_updated_at": data.get("alerts_updated_at"),
             "generated_at": data["generated_at"],
             "stop_id": data["stop"]["id"],
             "stop_name": data["stop"]["name"],

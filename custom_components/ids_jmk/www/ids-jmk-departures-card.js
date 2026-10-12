@@ -1,6 +1,6 @@
 /* IDS JMK dashboard card. No external dependencies or direct API requests. */
 const TYPE = "ids-jmk-departures-card";
-const DEFAULTS = { limit: 10, layout: "modern", highlight_minutes: 5, show_platform: true, show_accessibility: true, show_transport_icon: true };
+const DEFAULTS = { limit: 10, layout: "modern", highlight_minutes: 5, show_platform: true, show_accessibility: true, show_transport_icon: true, show_departure_day: true };
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const time = (value) => {
@@ -21,6 +21,21 @@ const TRANSPORT_ICONS = {
 };
 export function transportIcon(mode) {
   return Object.hasOwn(TRANSPORT_ICONS, mode) ? TRANSPORT_ICONS[mode] : null;
+}
+
+const calendarDate = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Prague", year: "numeric", month: "numeric", day: "numeric",
+});
+export function departureDay(value, now = Date.now()) {
+  const departure = new Date(value);
+  if (!value || !Number.isFinite(departure.getTime()) || !Number.isFinite(new Date(now).getTime())) return "";
+  const parts = (date) => Object.fromEntries(calendarDate.formatToParts(date)
+    .filter((p) => p.type !== "literal").map((p) => [p.type, Number(p.value)]));
+  const day = parts(departure), today = parts(new Date(now));
+  // Calendar days, not elapsed 24-hour periods: DST days have 23 or 25 hours.
+  const ordinal = (p) => Date.UTC(p.year, p.month - 1, p.day) / 86400000;
+  const difference = ordinal(day) - ordinal(today);
+  return difference === 0 ? "" : difference === 1 ? "zítra" : `${day.day}.${day.month}.`;
 }
 
 // Effective departure already includes the delay. Never add it a second time.
@@ -45,7 +60,7 @@ export function isUpcoming(row, threshold, now = Date.now()) {
 }
 
 const styles = `
-  :host { display:block; color:var(--primary-text-color, #202c24); }
+  :host { display:block; container-type:inline-size; color:var(--primary-text-color, #202c24); }
   * { box-sizing:border-box; }
   ha-card { display:block; overflow:hidden; background:var(--ha-card-background, var(--card-background-color, white)); border-radius:var(--ha-card-border-radius, 16px); }
   header { display:flex; align-items:center; gap:12px; padding:20px 20px 16px; }
@@ -55,13 +70,17 @@ const styles = `
   .heading { min-width:0; }
   h2 { margin:0; font-size:20px; line-height:1.3; font-weight:650; overflow-wrap:anywhere; }
   .eyebrow { font-size:10px; letter-spacing:1.7px; font-weight:700; color:var(--secondary-text-color, #657267); margin-bottom:4px; }
-  .labels, .row { display:grid; grid-template-columns:var(--line-width, 40px) minmax(0, 1fr) 46px 44px 48px; column-gap:8px; align-items:center; }
+  .labels, .row { display:grid; grid-template-columns:var(--line-width, 40px) minmax(0, 1fr) var(--day-column,) 46px 44px 48px; column-gap:8px; align-items:center; }
   .labels { padding:0 16px 9px; font-size:9px; text-transform:uppercase; letter-spacing:.2px; color:var(--secondary-text-color, #657267); }
   .labels span { white-space:nowrap; }
   .labels span:nth-child(n+3) { text-align:center; }
   .rows { list-style:none; padding:0; margin:0; }
   .row { min-height:68px; padding:12px 16px; border-top:1px solid var(--divider-color, #e6eae6); }
   .row.first { background:color-mix(in srgb, var(--primary-color, #447b32) 5%, transparent); }
+  .with-day { --day-column:42px; }
+  .day { display:none; }
+  .with-day .day { display:block; text-align:right; white-space:nowrap; font-size:11px; color:var(--secondary-text-color, #657267); font-variant-numeric:tabular-nums; }
+  .with-day.labels .day { font-size:inherit; text-align:right; }
   .with-transport { --line-width:68px; }
   .compact .with-transport { --line-width:60px; }
   .line ha-icon { display:flex; width:20px; height:20px; --mdc-icon-size:20px; flex-shrink:0; }
@@ -78,6 +97,7 @@ const styles = `
   .scheduled { text-align:center; font-size:15px; line-height:24px; font-weight:650; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .delay { text-align:center; font-size:12px; line-height:24px; color:var(--warning-color, #986200); white-space:nowrap; }
   .countdown { display:grid; place-items:center; height:34px; border-radius:8px; font-size:25px; line-height:1; font-weight:750; font-variant-numeric:tabular-nums; }
+  .countdown.long-number { font-size:20px; }
   .countdown.word { font-size:10px; }
   .countdown.upcoming { background:#d9f6df; color:#155d2b; }
   .departed { opacity:.55; }
@@ -92,7 +112,7 @@ const styles = `
   .compact .badge ha-icon { width:19px; height:19px; --mdc-icon-size:19px; }
   .compact h2 { font-size:16px; }
   .compact .eyebrow { display:none; }
-  .compact .labels, .compact .row { grid-template-columns:var(--line-width, 30px) minmax(0,1fr) 42px 38px 42px; column-gap:6px; }
+  .compact .labels, .compact .row { grid-template-columns:var(--line-width, 30px) minmax(0,1fr) var(--day-column,) 42px 38px 42px; column-gap:6px; }
   .compact .labels { padding:0 10px 5px; font-size:8px; }
   .compact .row { height:36px; min-height:36px; padding:5px 10px; grid-template-rows:25px; }
   .compact .line { border-radius:5px; font-size:14px; height:24px; }
@@ -102,12 +122,27 @@ const styles = `
   .compact .scheduled { font-size:13px; }
   .compact .delay { font-size:11px; }
   .compact .countdown { font-size:20px; height:24px; border-radius:5px; }
+  .compact .countdown.long-number { font-size:16px; }
   .compact .countdown.word { font-size:9px; }
   .compact footer { padding:6px 10px; font-size:9px; }
   @media (max-width:380px) {
     header { padding:16px 10px; } .labels { padding:0 10px 9px; }
-    .row { padding:12px 10px; } .labels, .row { grid-template-columns:var(--line-width, 32px) minmax(0,1fr) 42px 38px 42px; column-gap:6px; }
+    .row { padding:12px 10px; } .labels, .row { grid-template-columns:var(--line-width, 32px) minmax(0,1fr) var(--day-column,) 42px 38px 42px; column-gap:6px; }
     footer { padding:10px; } h2 { font-size:18px; } .countdown { font-size:23px; }
+  }
+  @container (max-width:420px) {
+    .modern .with-transport { --line-width:56px; }
+    .modern .with-day { --day-column:36px; }
+    .modern .labels, .modern .row { grid-template-columns:var(--line-width, 30px) minmax(0,1fr) var(--day-column,) 40px 38px 38px; column-gap:4px; padding-left:10px; padding-right:10px; }
+    .modern .labels { font-size:8px; }
+    .modern .line { font-size:14px; gap:3px; }
+    .modern .line ha-icon { width:18px; height:18px; --mdc-icon-size:18px; }
+    .modern .day { font-size:10px; }
+    .modern .scheduled { font-size:13px; }
+    .modern .delay { font-size:11px; }
+    .modern .countdown { font-size:22px; }
+    .modern .countdown.long-number { font-size:17px; }
+    .modern .countdown.word { font-size:9px; }
   }
 `;
 
@@ -154,36 +189,41 @@ class IDSJMKDeparturesCard extends HTMLElement {
     const attributes = state?.attributes ?? {};
     const title = this.config.title || attributes.stop_name || "Odjezdová tabule";
     const rows = Array.isArray(attributes.departures) ? attributes.departures.slice(0, this.config.limit) : [];
-    const age = Date.now() - Date.parse(attributes.generated_at);
+    const now = Date.now();
+    const days = rows.map((row) => departureDay(row.scheduled_departure, now));
+    const dayColumn = this.config.show_departure_day && days.some(Boolean) ? "with-day" : "";
+    const age = now - Date.parse(attributes.generated_at);
     const old = !Number.isFinite(age) || age > 120000;
     const unavailable = !state || state.state === "unavailable";
     const invalid = state && !Array.isArray(attributes.departures);
-    const stale = old || attributes.realtime_stale !== false;
+    const realtimeEnabled = attributes.realtime_enabled !== false;
+    const stale = old || (realtimeEnabled && attributes.realtime_stale !== false);
     let body;
     if (unavailable || invalid) {
       body = `<div class="message" role="status">${!state ? "Vyberte dostupný senzor IDS JMK v nastavení karty." : invalid ? "Vybraný senzor neobsahuje odjezdovou tabuli." : "Data nejsou dostupná. Zkontrolujte připojení integrace k serveru."}</div>`;
     } else if (!rows.length) {
       body = '<div class="message" role="status">Pro zvolené filtry nejsou dostupné žádné odjezdy.</div>';
     } else {
-      body = `<div class="labels ${this.config.show_transport_icon ? "with-transport" : ""}" aria-hidden="true"><span>Linka</span><span>Směr</span><span>Odjezd</span><span title="Odhadované zpoždění v minutách">Zpož. min</span><span>Za (min)</span></div><ol class="rows">${rows.map((row, index) => {
-        const view = departureView(row);
+      body = `<div class="labels ${dayColumn} ${this.config.show_transport_icon ? "with-transport" : ""}" aria-hidden="true"><span>Linka</span><span>Směr</span><span class="day">Den</span><span>Odjezd</span><span title="Odhadované zpoždění v minutách">Zpož. min</span><span>Za (min)</span></div><ol class="rows">${rows.map((row, index) => {
+        const view = departureView(row, now);
         const transport = this.config.show_transport_icon ? transportIcon(row.transport_mode) : null;
         const amenities = this.config.show_accessibility ?
           `${row.wheelchair_accessible === true ? icon("wheelchair-accessibility", "Podle jízdního řádu: přístupné vozíčkářům") : ""}${row.bikes_allowed === true ? icon("bicycle", "Podle jízdního řádu: přeprava kol") : ""}` : "";
-        const upcoming = !stale && isUpcoming(row, this.config.highlight_minutes);
-        return `<li class="row ${this.config.show_transport_icon ? "with-transport" : ""} ${index === 0 ? "first" : ""} ${view.departed ? "departed" : ""} ${row.cancelled ? "cancelled" : ""}">
+        const upcoming = !stale && isUpcoming(row, this.config.highlight_minutes, now);
+        return `<li class="row ${dayColumn} ${this.config.show_transport_icon ? "with-transport" : ""} ${index === 0 ? "first" : ""} ${view.departed ? "departed" : ""} ${row.cancelled ? "cancelled" : ""}">
           <span class="line" aria-label="Linka ${escape(row.line)}">${transport ? icon(...transport) : ""}<span>${escape(row.line)}</span></span>
           <div class="destination-block"><span class="destination-text" title="${escape(row.destination)}">${escape(row.destination)}</span>${amenities ? `<span class="amenities">${amenities}</span>` : ""}${this.config.show_platform && row.platform ? `<span class="meta" title="Stanoviště ${escape(row.platform)}" aria-label="Stanoviště ${escape(row.platform)}">${escape(row.platform)}</span>` : ""}</div>
+          <span class="day" title="${days[index] ? escape(new Date(row.scheduled_departure).toLocaleDateString("cs-CZ", { timeZone: "Europe/Prague", day: "numeric", month: "numeric", year: "numeric" })) : ""}">${escape(days[index])}</span>
           <span class="scheduled" title="Odjezd podle jízdního řádu">${escape(view.scheduled)}</span>
           <span class="delay" ${view.delay && !row.cancelled ? 'title="Odhadované zpoždění v minutách"' : 'aria-hidden="true"'}>${view.delay && !row.cancelled ? escape(view.delay.replace(" min", "")) : ""}</span>
-          <span class="countdown ${view.unit ? "" : "word"} ${upcoming ? "upcoming" : ""}" title="${row.cancelled ? "Spoj je zrušen" : upcoming ? "Blížící se odjezd včetně dostupného odhadu zpoždění" : "Čas do odjezdu včetně dostupného odhadu zpoždění"}">${escape(view.countdown)}</span>
+          <span class="countdown ${view.unit ? "" : "word"} ${/^\d{4,}$/.test(view.countdown) ? "long-number" : ""} ${upcoming ? "upcoming" : ""}" title="${row.cancelled ? "Spoj je zrušen" : upcoming ? "Blížící se odjezd včetně dostupného odhadu zpoždění" : "Čas do odjezdu včetně dostupného odhadu zpoždění"}">${escape(view.countdown)}</span>
         </li>`;
       }).join("")}</ol>`;
     }
     const markup = `<style>${styles}</style><ha-card class="${this.config.layout}">
       <header><div class="badge">${icon("bus-clock", "Odjezdy IDS JMK")}</div><div class="heading"><div class="eyebrow">IDS JMK · ODJEZDY</div><h2>${escape(title)}</h2></div></header>
       ${body}
-      <footer><span class="status ${stale || unavailable ? "warning" : ""}"><span class="dot"></span>${unavailable ? "Bez spojení" : old ? "Data nejsou aktuální" : stale ? "Realtime není aktuální" : "Data aktualizována"}</span><span>Aktualizace ${escape(time(attributes.generated_at))}</span></footer>
+      <footer><span class="status ${stale || unavailable ? "warning" : ""}"><span class="dot"></span>${unavailable ? "Bez spojení" : old ? "Data nejsou aktuální" : stale ? "Realtime není aktuální" : !realtimeEnabled ? "Jízdní řád · realtime vypnutý" : "Data aktualizována"}</span><span>Aktualizace ${escape(time(attributes.generated_at))}</span></footer>
     </ha-card>`;
     if (markup !== this._markup) {
       this.shadowRoot.innerHTML = markup;
@@ -207,11 +247,12 @@ class IDSJMKDeparturesEditor extends HTMLElement {
         { name: "layout", required: true, selector: { select: { mode: "dropdown", options: [{ value: "modern", label: "Moderní" }, { value: "compact", label: "Kompaktní" }] } } },
         { name: "highlight_minutes", required: true, selector: { number: { min: 0, max: 60, mode: "box", unit_of_measurement: "min" } } },
         { name: "limit", required: true, selector: { number: { min: 1, max: 50, mode: "box" } } },
+        { name: "show_departure_day", selector: { boolean: {} } },
         { name: "show_transport_icon", selector: { boolean: {} } },
         { name: "show_platform", selector: { boolean: {} } },
         { name: "show_accessibility", selector: { boolean: {} } },
       ];
-      const labels = { entity: "Senzor odjezdové tabule", title: "Vlastní nadpis (volitelné)", layout: "Vzhled karty", highlight_minutes: "Zvýraznit odjezd do (0 = vypnuto)", limit: "Počet zobrazených odjezdů", show_transport_icon: "Zobrazit ikonu druhu dopravy", show_platform: "Zobrazit stanoviště", show_accessibility: "Zobrazit ikonky vybavení podle jízdního řádu" };
+      const labels = { entity: "Senzor odjezdové tabule", title: "Vlastní nadpis (volitelné)", layout: "Vzhled karty", highlight_minutes: "Zvýraznit odjezd do (0 = vypnuto)", limit: "Počet zobrazených odjezdů", show_departure_day: "Zobrazit den odjezdu", show_transport_icon: "Zobrazit ikonu druhu dopravy", show_platform: "Zobrazit stanoviště", show_accessibility: "Zobrazit ikonky vybavení podle jízdního řádu" };
       this.form.computeLabel = (schema) => labels[schema.name];
       this.form.addEventListener("value-changed", (event) => {
         event.stopPropagation();

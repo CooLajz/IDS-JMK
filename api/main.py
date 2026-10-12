@@ -21,6 +21,7 @@ def create_app(settings=None):
     settings = settings or Settings()
     timetable = Timetable(settings.data_dir.resolve())
     realtime = Realtime(settings.realtime_max_age)
+    schedule_only = Realtime(settings.realtime_max_age)
     state = {"importing": False, "gtfs_last_checked": None, "gtfs_error": None, "realtime_error": None}
     id_file = timetable.directory / "instance-id"
     if not id_file.exists():
@@ -77,7 +78,10 @@ def create_app(settings=None):
             headers={"User-Agent": "IDS-JMK/0.1 (github.com/CooLajz/IDS-JMK)"},
         ) as client:
             tasks = (
-                [asyncio.create_task(f(client)) for f in (static_loop, realtime_loop)]
+                [
+                    asyncio.create_task(f(client))
+                    for f in ((static_loop, realtime_loop) if settings.realtime_enabled else (static_loop,))
+                ]
                 if settings.download_enabled
                 else []
             )
@@ -90,7 +94,7 @@ def create_app(settings=None):
 
     app = FastAPI(
         title="IDS JMK API",
-        version="0.1.2",
+        version="0.1.3",
         lifespan=lifespan,
         description="Odjezdy a polohy vozidel. Vlastní odhady jsou označeny vehicle_estimate.",
     )
@@ -128,11 +132,14 @@ def create_app(settings=None):
             "schedule": meta,
             "schedule_expired": bool(valid_to and valid_to < datetime.now(TZ).strftime("%Y%m%d")),
             "realtime": {
+                "enabled": True,
                 "updated_at": iso(realtime.snapshot.timestamp) if realtime.snapshot.timestamp else None,
                 "stale": not realtime.fresh(realtime.snapshot.timestamp, time.time()),
                 "vehicles": len(realtime.snapshot.vehicles),
                 "trip_updates": len(realtime.snapshot.updates),
-            },
+            }
+            if settings.realtime_enabled
+            else {"enabled": False},
         }
 
     @app.get("/api/v1/stops")
@@ -145,7 +152,9 @@ def create_app(settings=None):
         ready()
         return timetable.detail(stop_id)
 
-    @app.get("/api/v1/stops/{stop_id}/departures", response_model=DepartureBoard)
+    @app.get(
+        "/api/v1/stops/{stop_id}/departures", response_model=DepartureBoard, response_model_exclude_unset=True
+    )
     def departures(
         stop_id: str,
         limit: int = Query(10, ge=1, le=100),
@@ -161,9 +170,30 @@ def create_app(settings=None):
     ):
         ready()
         result = timetable.departures(
-            stop_id, realtime, datetime.now(TZ), limit, horizon, line, direction, previous_limit
+            stop_id,
+            realtime if settings.realtime_enabled else schedule_only,
+            datetime.now(TZ),
+            limit,
+            horizon,
+            line,
+            direction,
+            previous_limit,
         )
-        result["realtime_stale"] = not realtime.fresh(realtime.snapshot.timestamp, time.time())
+        result["realtime_enabled"] = settings.realtime_enabled
+        if settings.realtime_enabled:
+            result.update(timetable.board_alerts(stop_id, realtime, datetime.now(TZ), line, direction))
+            result["realtime_stale"] = not realtime.fresh(realtime.snapshot.timestamp, time.time())
+        else:
+            for row in result["departures"] + result["previous_departures"]:
+                for key in (
+                    "estimated_departure",
+                    "delay_seconds",
+                    "realtime_updated_at",
+                    "cancelled",
+                    "vehicle_id",
+                    "has_vehicle_position",
+                ):
+                    row.pop(key, None)
         return result
 
     @app.get("/api/v1/trips/{trip_id}")
@@ -174,14 +204,18 @@ def create_app(settings=None):
         except ValueError:
             raise HTTPException(422, "Neplatné datum") from None
         result = timetable.trip(trip_id, day)
-        result["vehicles"] = (
-            realtime.trip_vehicles(trip_id, result["stops"], day, time.time()) if result["active"] else []
-        )
+        result["realtime_enabled"] = settings.realtime_enabled
+        if settings.realtime_enabled:
+            result["vehicles"] = (
+                realtime.trip_vehicles(trip_id, result["stops"], day, time.time()) if result["active"] else []
+            )
         return result
 
     @app.get("/api/v1/vehicles")
     def vehicles(trip_id: str | None = None):
         ready()
+        if not settings.realtime_enabled:
+            return {"realtime_enabled": False, "vehicles": []}
         ids = {key[0] for key in realtime.snapshot.vehicles if not trip_id or key[0] == trip_id}
         with timetable.connect() as db:
             positions = {key: timetable.trip_stops(db, key) for key in ids}

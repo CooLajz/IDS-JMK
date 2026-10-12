@@ -39,6 +39,7 @@ highlight_minutes: 5 # 0 vypne zelené zvýraznění
 # show_platform: true
 # show_accessibility: true
 # show_transport_icon: true
+# show_departure_day: true
 ```
 
 ID entity nahraďte skutečným ID vytvořeného senzoru. Karta podporuje světlý i tmavý motiv HA. Sloupec **Odjezd** uvádí jízdní řád, sloupec **Zpož. min** obsahuje nenulové odhadované zpoždění; sloupec **Za** již zahrnuje dostupný odhad, nic se k němu nepřičítá. Odpočet se přepočítává každých 15 sekund, data senzoru každých 30 sekund. Piktogramy vozíčku a kola vycházejí z jízdního řádu, nepotvrzují aktuálně nasazené vozidlo. Při výpadku API nebo zastaralých datech karta zobrazí upozornění.
@@ -84,3 +85,23 @@ Na běžném HTTP nemusí prohlížeč dovolit kopírování do schránky; text 
 Integrace obnovuje data každých 30 sekund. Pole odjezdů a čas aktualizace nejsou určeny k dlouhodobému ukládání do historie; integrace je označuje jako atributy bez záznamu do recorderu.
 
 Ikona vedle čísla linky vychází z `transport_mode` v API. V editoru ji lze skrýt volbou **Zobrazit ikonu druhu dopravy** (`show_transport_icon: false`). Karta používá hotové [Material Design Icons od Pictogrammers](https://pictogrammers.com/library/mdi/) dostupné přímo v HA: šalina `tram`, autobus `bus`, vlak `train`, trolejbus `bus-electric`, kolo `bicycle` a vozíček `wheelchair-accessibility`. Elektrický autobus slouží jako symbol trolejbusu s odpovídajícím textovým popiskem. Chybějící nebo neznámý druh dopravy se zobrazí bez ikony; neodhaduje se z čísla linky. Ikony vybavení lze skrýt nezávisle.
+
+Volba **Zobrazit den odjezdu** (`show_departure_day`, výchozí `true`) přidává před čas samostatný sloupec zarovnaný doprava. Dnešní odjezdy mají prázdnou buňku, následující kalendářní den označení „zítra“ a ostatní dny datum, například „13.10.“. Plné datum včetně roku je v popisku. Sloupec se zobrazí pouze tehdy, pokud některý z viditelných odjezdů není dnes. Po vypnutí se prostor vrátí sloupci směru. Den patří k času podle jízdního řádu ve vedlejším sloupci a počítá se v pásmu Europe/Prague, včetně přechodu přes půlnoc a změn letního času. Zpoždění ovlivňuje odpočet, nikoli toto datum jízdního řádu.
+
+## Karta upozornění z více tabulí
+
+Od verze 0.1.3 je součástí integrace také samostatná karta **IDS JMK — Upozornění**. V editoru dashboardu vyberte jeden nebo více senzorů odjezdových tabulí. Karta čte jejich atribut `alerts`, neodesílá další dotazy na server a stejné upozornění zobrazí pouze jednou. Upozornění na různých linkách se sloučí včetně čísel odpovídajících linek a názvů zdrojových tabulí. Text lze rozbalit; rozbalení zůstává zachované při aktualizaci.
+
+```yaml
+type: custom:ids-jmk-alerts-card
+title: Omezení na mých trasách
+entities:
+  - sensor.ids_jmk_nadrazi
+  - sensor.ids_jmk_prace
+```
+
+Nahraďte příklady skutečnými ID senzorů. Pole `entities` je dostupné i ve vizuálním editoru, YAML není nutný. Po aktualizaci integrace restartujte Home Assistant a obnovte stránku; JavaScript karty se registruje automaticky stejně jako u odjezdové tabule. Podpora upozornění vyžaduje aktualizované API i integraci a na serveru `REALTIME_ENABLED=true`.
+
+Nedostupný senzor, zastaralý feed, starší API bez podpory upozornění a záměrně vypnutý realtime mají odlišný popisek. Upozornění z neaktuálních zdrojů se nezobrazují jako platná; zbývající aktuální senzory se dále používají. Prázdný seznam při nedostupném zdroji nepotvrzuje provoz bez omezení. U linkových upozornění ověřte dopad na zastávku v původním textu.
+
+Při výchozím `REALTIME_ENABLED=false` funguje běžná odjezdová karta pouze s jízdním řádem a v zápatí uvádí „Jízdní řád · realtime vypnutý“. Nevyžaduje polohy ani zpoždění. Pro tento režim není potřeba přidávat kartu upozornění.

@@ -1,5 +1,6 @@
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { renderAlerts } from "./alerts.js";
 import { vehicleIcon, mdiIcon, mdiBicycle, mdiWheelchairAccessibility } from "./transport-icons.js";
 
 const $ = (id) => document.getElementById(id);
@@ -225,13 +226,16 @@ async function refresh() {
     boardReceivedAt = performance.now();
     renderBoard();
     notice(
-      data.realtime_stale
+      data.realtime_enabled === false
+        ? "Jízdní řád · realtime je na serveru vypnutý. U spoje můžete zobrazit trasu zastávek."
+        : data.realtime_stale
         ? "Realtime údaje nejsou čerstvé. Odjezdy jsou podle jízdního řádu."
         : "Živá tabule · obnova každých 30 sekund. Kliknutím na linku, směr nebo stanoviště nastavíte filtr, tlačítkem „Poloha“ otevřete mapu.",
     );
   } catch (e) {
     if (seq === boardSequence) {
       board = null;
+      renderAlerts($("alerts"), null);
       $("departures").replaceChildren();
       $("empty").hidden = false;
       $("empty").textContent = "Odjezdy nejsou dostupné. Zkuste je obnovit.";
@@ -248,6 +252,7 @@ async function refresh() {
   }
 }
 function renderBoard() {
+  renderAlerts($("alerts"), board);
   const focused = document.activeElement.closest?.("#departures button");
   const focusKey = focused?.dataset.key;
   $("departures").replaceChildren();
@@ -257,7 +262,7 @@ function renderBoard() {
   $("subtitle").textContent = "Nejbližší odjezdy";
   $("updated").textContent = `Aktualizováno ${timeText(board.generated_at)}`;
   const rows = [...(board.previous_departures || []), ...board.departures];
-  $("estimate-note").hidden = !rows.length;
+  $("estimate-note").hidden = !rows.length || board.realtime_enabled === false;
   for (const d of rows) {
     const tr = document.createElement("tr");
     if (d.cancelled) tr.classList.add("cancelled");
@@ -278,17 +283,19 @@ function renderBoard() {
     if (transport) route.querySelector("button")?.prepend(transport);
     const dest = cell("");
     filterLink(dest, "direction", d.destination, d.destination || "—", key);
-    if (d.has_vehicle_position) {
+    if (d.has_vehicle_position || board.realtime_enabled === false) {
       const position = document.createElement("button");
       position.className = "position-link";
       position.dataset.key = `${key}/map`;
-      position.title = "Zobrazit aktuální polohu vozidla na mapě";
+      const staticRoute = board.realtime_enabled === false;
+      position.title = staticRoute ? "Zobrazit trasu zastávek na mapě" : "Zobrazit aktuální polohu vozidla na mapě";
       position.setAttribute(
         "aria-label",
-        `Poloha vozidla linky ${d.line}, ${d.destination}`,
+        `${staticRoute ? "Trasa" : "Poloha vozidla"} linky ${d.line}, ${d.destination}`,
       );
       position.innerHTML =
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg> Poloha';
+      if (staticRoute) position.lastChild.textContent = " Trasa";
       position.addEventListener("click", () => showTrip(d));
       dest.append(position);
     }
@@ -416,7 +423,7 @@ async function updateTrip() {
     );
     if (seq !== tripSequence || !$("detail").open) return;
     $("detail-features").replaceChildren(vehicleFeatures(trip, true));
-    const vehicles = trip.vehicles.filter((v) => !v.stale && v.position);
+    const vehicles = (trip.vehicles || []).filter((v) => !v.stale && v.position);
     const stopProgress = (s) => vehicles.find((v) =>
       v.current_stop?.stop_sequence === s.seq && v.current_stop.stop_id === s.stop_id,
     )?.current_stop;
@@ -464,12 +471,14 @@ async function updateTrip() {
       updated.title = new Date(vehicles[0].updated_at).toLocaleString("cs-CZ", { timeZone: "Europe/Prague" });
       $("detail-status").append(caption, updated);
     } else {
-      $("detail-status").textContent = "Poloha není dostupná";
+      $("detail-status").textContent = trip.realtime_enabled === false
+        ? "Trasa podle pořadí zastávek · realtime vypnutý" : "Poloha není dostupná";
     }
     followedVehiclePosition = vehicles[0]?.position ?? null;
     $("map-controls").hidden = !vehicles.length;
-    $("map").hidden = !vehicles.length;
-    if (vehicles.length) {
+    const showRoute = trip.realtime_enabled === false && trip.stops.length > 0;
+    $("map").hidden = !vehicles.length && !showRoute;
+    if (vehicles.length || showRoute) {
       const firstMap = !map;
       if (firstMap) {
         map = L.map("map");

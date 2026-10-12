@@ -25,20 +25,23 @@ class Departure(BaseModel):
     destination: str
     platform: str
     scheduled_departure: str = Field(description="ISO 8601 včetně offsetu Europe/Prague.")
-    estimated_departure: str | None
+    estimated_departure: str | None = None
     departure_time: str = Field(description="Odhadovaný čas, je-li dostupný, jinak plánovaný.")
     departure_time_display: str = Field(description="Čas HH:MM pro jednoduché dashboardy.")
     minutes_until: int = Field(description="Minuty do odjezdu zaokrouhlené nahoru v okamžiku generated_at.")
-    delay_seconds: int | None
+    delay_seconds: int | None = None
     source: Literal["schedule", "trip_update", "vehicle_estimate"]
-    realtime_updated_at: str | None
-    cancelled: bool | None = Field(description="null znamená, že zrušení není potvrzeno ani vyvráceno.")
-    vehicle_id: str | None
+    realtime_updated_at: str | None = None
+    cancelled: bool | None = Field(
+        default=None, description="null znamená, že zrušení není potvrzeno ani vyvráceno."
+    )
+    vehicle_id: str | None = None
     has_vehicle_position: bool = Field(
+        default=False,
         description=(
             "Pro tento provozní den je dostupná čerstvá použitelná poloha v detailu spoje; "
             "nezávisí na odhadu zpoždění."
-        )
+        ),
     )
     wheelchair_accessible: bool | None = Field(
         description=(
@@ -49,6 +52,23 @@ class Departure(BaseModel):
         description=(
             "Možnost přepravy kol podle GTFS jízdního řádu; null = neuvedeno. Neurčuje volnou kapacitu."
         )
+    )
+
+
+class ServiceAlert(BaseModel):
+    id: str
+    key: str = Field(description="Obsahový klíč pro sloučení stejného upozornění z více tabulí.")
+    title: str
+    description: str
+    url: str | None
+    cause: str
+    effect: str
+    scope: Literal["line", "stop", "trip", "mixed"]
+    lines: list[str]
+    matched_lines: list[str]
+    affected_entities: list[dict]
+    active_period: list[dict[str, int]] = Field(
+        description="Intervaly platnosti, Unix sekundy; prázdné = dokud je ve feedu."
     )
 
 
@@ -63,4 +83,14 @@ class DepartureBoard(BaseModel):
             "Nejde o potvrzení skutečného odjezdu ani archiv realtime dat."
         )
     )
-    realtime_stale: bool
+    realtime_enabled: bool
+    realtime_stale: bool = False
+    alerts: list[ServiceAlert] = Field(
+        default_factory=list,
+        description="Upozornění pro zastávku a filtry, nezávisle na limitu odjezdů.",
+    )
+    alerts_stale: bool = Field(
+        default=False,
+        description="Při neaktuálním zdroji je alerts prázdné; nejde o potvrzení provozu bez omezení.",
+    )
+    alerts_updated_at: str | None = None

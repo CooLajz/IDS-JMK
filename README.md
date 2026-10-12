@@ -2,7 +2,7 @@
 
 Vlastní server pro jízdní řády a realtime data IDS JMK. Poskytuje JSON API pro odjezdové displeje, weby a Home Assistant. Volitelný web nabízí vyhledávání zastávek, odjezdovou tabuli a detail spoje s polohou vozidla.
 
-**Verze 0.1.2.** Instalační Compose soubory pro Portainer a ZIP integrace Home Assistantu jsou součástí [vydání na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API a webu se vydávají samostatně pro Linux AMD64 a ARM64.
+**Verze 0.1.3.** Instalační Compose soubory pro Portainer a ZIP integrace Home Assistantu jsou součástí [vydání na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API a webu se vydávají samostatně pro Linux AMD64 a ARM64.
 
 ## Součásti
 
@@ -73,13 +73,16 @@ docker compose -f compose.proxy.yaml -f compose.build.yaml up -d --build
 | --- | --- | --- |
 | `DATA_DIR` | `data` (v obrazu `/data`) | Persistentní data |
 | `GTFS_URL` | Přímá adresa KORDIS níže | Zdroj jízdních řádů |
+| `REALTIME_ENABLED` | `false` | `true` zapne stahování realtime, odhady, polohy a upozornění |
 | `REALTIME_URL` | Přímá adresa KORDIS níže | Zdroj realtime |
 | `GTFS_INTERVAL_SECONDS` | `86400` | Kontrola jízdních řádů každých 24 hodin, minimum 3600 s |
 | `REALTIME_INTERVAL_SECONDS` | `60` | Kontrola realtime každých 60 sekund, minimum 15 s |
 | `REALTIME_MAX_AGE_SECONDS` | `180` | Maximální stáří použitelných realtime zpráv |
 | `DOWNLOAD_ENABLED` | `true` | `false` vypne stahování pro izolované testy |
 
-Intervaly můžete změnit v Portaineru v části **Environment variables** daného Stacku pomocí `GTFS_INTERVAL_SECONDS` a `REALTIME_INTERVAL_SECONDS` (hodnoty v sekundách). Pokud proměnné neuvedete, použije se 86400 a 60 sekund. Po změně znovu nasaďte Stack. Při startu se oba zdroje načtou ihned; interval určuje prodlevu mezi dokončením obnovy a dalším stažením. Po neúspěšném stažení GTFS se pokus opakuje za 60 sekund. Obnova webové tabule a HA integrace z API zůstává každých 30 sekund.
+Intervaly můžete změnit v Portaineru v části **Environment variables** daného Stacku pomocí `GTFS_INTERVAL_SECONDS` a `REALTIME_INTERVAL_SECONDS` (hodnoty v sekundách). Pokud proměnné neuvedete, použije se 86400 a 60 sekund. Po změně znovu nasaďte Stack. Při startu se jízdní řád a případně zapnutý realtime načtou ihned; interval určuje prodlevu mezi dokončením obnovy a dalším stažením. Po neúspěšném stažení GTFS se pokus opakuje za 60 sekund. Obnova webové tabule a HA integrace z API zůstává každých 30 sekund.
+
+Realtime je **výchozí vypnutý**. Pro jeho použití nastavte v `.env` nebo v Portaineru `REALTIME_ENABLED=true` a znovu nasaďte Stack. Nastavení platí pro všechny přiložené Compose varianty. Hodnota `false` nebo neuvedená proměnná znamená provoz pouze podle jízdního řádu: realtime se nestahuje, odjezdy neobsahují odhady, zpoždění, polohy ani upozornění. Web nabídne mapu zastávek spoje bez vozidel. Statické GTFS se nadále obnovuje podle `GTFS_INTERVAL_SECONDS`.
 
 Stejný obsah GTFS se znovu neimportuje. Nový archiv se zkontroluje a importuje do oddělené databáze, která pak atomicky nahradí původní. Při chybě zůstává poslední funkční jízdní řád. Realtime snapshot se pravidelně nahrazuje, nepersistuje se přes restart.
 

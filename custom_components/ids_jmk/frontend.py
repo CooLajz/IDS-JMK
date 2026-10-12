@@ -12,7 +12,10 @@ CARD_URL = "/ids_jmk/ids-jmk-departures-card.js"
 
 async def async_register_card(hass):
     """Register once during integration setup, independently of board entries."""
-    content = await hass.async_add_executor_job(CARD_PATH.read_bytes)
-    version = hashlib.sha256(content).hexdigest()[:12]
-    await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, str(CARD_PATH), False)])
-    add_extra_js_url(hass, f"{CARD_URL}?v={version}")
+    for name in ("ids-jmk-departures-card.js", "ids-jmk-alerts-card.js"):
+        path = CARD_PATH.with_name(name)
+        url = f"/ids_jmk/{name}"
+        content = await hass.async_add_executor_job(path.read_bytes)
+        version = hashlib.sha256(content).hexdigest()[:12]
+        await hass.http.async_register_static_paths([StaticPathConfig(url, str(path), False)])
+        add_extra_js_url(hass, f"{url}?v={version}")

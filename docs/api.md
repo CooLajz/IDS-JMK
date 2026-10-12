@@ -15,13 +15,13 @@
 
 Parametry odjezdů: `limit` 1–100, `horizon` 1–2880 minut, `line` (například `501`), `direction` (přesný název cíle z detailu zastávky), `previous_limit` 0–10 (výchozí 0). Pro konkrétní stanoviště použijte jeho ID v URL. Směry v detailu jsou všechny varianty v platném souboru GTFS, nikoli jen aktuálně jedoucí varianty.
 
-Základ odpovědi odjezdů je `stop`, `generated_at`, `timezone`, `realtime_stale` a pole `departures` a `previous_departures`. Schéma každého řádku je popsané v OpenAPI. Pro HA jsou připravená také pole `departure_time_display` a `minutes_until`. Minuty platí k `generated_at`, nejsou běžícími hodinami; klient musí odpověď obnovovat.
+Základ odpovědi odjezdů je `stop`, `generated_at`, `timezone`, `realtime_enabled` a pole `departures` a `previous_departures`. Schéma každého řádku je popsané v OpenAPI. Pro HA jsou připravená také pole `departure_time_display` a `minutes_until`. Minuty platí k `generated_at`, nejsou běžícími hodinami; klient musí odpověď obnovovat.
 
 `departure_time` je odhad, pokud je dostupný, jinak plánovaný čas. `scheduled_departure` zůstává zachován. `service_date` určuje provozní den: odjezd v 01:05 může patřit předchozímu dni jako 25:05. Seznam se řadí podle výsledného okamžiku. Konečné zastávky bez dalšího pokračování spoje se nevydávají za odjezdy.
 
 ## Původ časů
 
-- `schedule`: pouze jízdní řád; `delay_seconds` a `estimated_departure` jsou `null`.
+- `schedule`: pouze jízdní řád; při zapnutém realtime jsou `delay_seconds` a `estimated_departure` `null`, při vypnutém realtime se tato pole vynechávají.
 - `trip_update`: přímá předpověď pro dané zastavení ze zdroje. Zpracuje se explicitní čas nebo zpoždění odjezdu, zrušení spoje a vynechaná zastávka. `NO_DATA` potlačí odhad.
 - `vehicle_estimate`: vlastní přibližný výpočet. U stojícího vozidla porovná čas zprávy s plánovaným odjezdem. Při jízdě mezi zastávkami odhadne postup z poměru vzdáleností k předchozí a následující zastávce a porovná jej s jízdním řádem. Nepoužívá skutečnou geometrii silnice ani predikci dopravce.
 
@@ -99,3 +99,25 @@ Každý řádek v `departures` i `previous_departures` a detail `/api/v1/trips/{
 Mapování vychází ze [specifikace GTFS](https://gtfs.org/documentation/schedule/reference/#routestxt). Podporované [rozšířené kódy](https://developers.google.com/transit/gtfs/reference/extended-route-types) se převádějí na stejná označení: železnice 100–117 a 400/403/404, autobusy 200–209 a 700–716, trolejbusy 800, šaliny 900–906, metro 401/402, monorail 405, lodní doprava 1000/1200, visuté lanovky 1300–1302 a 1304–1307, pozemní lanovky 1400. Neznámé kódy vracejí `transport_mode: "unknown"`; původní `route_type` zůstane zachován.
 
 Jde o druh dopravy linky podle jízdního řádu, nikoli ověření aktuálně nasazeného vozidla či jeho modelu. Typ se neodhaduje z čísla linky ani polohy. Integrace HA předává tato pole v atributech odjezdů beze změny. Pro nová pole aktualizujte API server na verzi 0.1.2 nebo novější; samotná aktualizace HA integrace starší server nerozšíří.
+
+## Volitelný realtime
+
+Realtime je výchozí vypnutý. Zapněte jej na serveru pomocí `REALTIME_ENABLED=true` a restartujte aplikaci / znovu nasaďte Stack. `REALTIME_ENABLED=false` vypne samotné stahování, zpracování a poskytování realtime; aktualizace statického GTFS pokračují.
+
+Při vypnutí obsahuje odpověď odjezdů `realtime_enabled: false`, jízdní řád a `source: "schedule"`. Pole `estimated_departure`, `delay_seconds`, `realtime_updated_at`, `cancelled`, `vehicle_id`, `has_vehicle_position` se v jednotlivých odjezdech **vynechávají**, stejně jako `realtime_stale`, `alerts`, `alerts_stale` a `alerts_updated_at` v celé tabuli. Platí to i pro `previous_departures`. `departure_time` odpovídá `scheduled_departure`; chybějící realtime není chyba ani potvrzení nulového zpoždění.
+
+Detail spoje vrací `realtime_enabled: false` a zastávky, bez pole `vehicles`. Endpoint vozidel vrací `{"realtime_enabled": false, "vehicles": []}` a stav serveru `realtime: {"enabled": false}`. Web skryje upozornění a odhady, nabídne tlačítko **Trasa** a mapu zastávek v pořadí spoje. Jednotlivé zastávky zobrazuje jako body bez spojovacích čar. Neoznačuje se aktuální ani následující zastávka vozidla.
+
+## Upozornění a výluky
+
+Při zapnutém realtime obsahuje stejná odpověď odjezdové tabule také:
+
+- `alerts`: odpovídající aktuální upozornění; každé obsahuje `id`, obsahový `key`, `title`, `description`, bezpečný odkaz `url`, `cause`, `effect`, `scope`, `lines`, `matched_lines`, `affected_entities` a `active_period`.
+- `alerts_stale`: zda zdroj upozornění není aktuální. V takovém případě je `alerts` prázdné; neznamená to provoz bez omezení.
+- `alerts_updated_at`: čas zdrojového feedu, případně `null`.
+
+`lines` uvádí linky z upozornění, `matched_lines` jen linky odpovídající vybrané tabuli a filtrům. `scope` rozlišuje `line`, `stop`, `trip` a `mixed`. Obsahový `key` slouží ke sloučení stejného upozornění z více tabulí. Intervaly `active_period` používají Unix sekundy, začátek je včetně a konec bez uvedeného okamžiku. Pokud interval chybí, upozornění platí po dobu přítomnosti v aktuálním feedu.
+
+Přiřazení respektuje zastávku či stanoviště, linku a cílový směr. Není omezené počtem vypsaných odjezdů ani jejich časovým horizontem; vychází z linek a spojů obsluhujících zastávku v načteném jízdním řádu. Více podmínek jednoho GTFS selektoru platí současně, více selektorů představuje alternativy. Podporovány jsou `route_id`, `route_type`, `direction_id`, `stop_id` a `trip` obsahující pouze `trip_id`. Selektory s dalšími nepodporovanými podmínkami (například `agency_id` či datum konkrétní jízdy uvnitř `trip`) se nepřiřazují, aby nedošlo k rozšíření jejich platnosti.
+
+Feed KORDIS v ověřeném vzorku uvádí u upozornění čísla/názvy linek místo GTFS ID. Nejprve se proto hledá skutečné `route_id`; pouze pokud v jízdním řádu neexistuje, zkusí se shoda s názvem linky bez rozlišení velikosti písmen. Linkové upozornění **nepotvrzuje dopad na konkrétní zastávku nebo směr**. Web jej označuje jako omezení na lince a nad odjezdovou tabulí nabízí rozbalení původního textu s podrobnostmi.

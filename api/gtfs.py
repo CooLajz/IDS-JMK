@@ -16,6 +16,7 @@ from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from .alerts import select_alerts
 from .transport import transport_mode
 
 TZ = ZoneInfo("Europe/Prague")
@@ -334,6 +335,32 @@ class Timetable:
                     for s in self.trip_stops(db, trip_id)
                 ],
             }
+
+    def board_alerts(self, stop_id, realtime, now, line=None, direction=None):
+        snapshot = realtime.snapshot
+        stale = not realtime.fresh(snapshot.timestamp, now.timestamp())
+        result = {"alerts": [], "alerts_stale": stale,
+                  "alerts_updated_at": iso(snapshot.timestamp) if snapshot.timestamp else None}
+        if stale or not snapshot.alerts:
+            return result
+        with self.connect() as db:
+            ids = self.stop_ids(db, stop_id)
+            marks = ",".join("?" for _ in ids)
+            sql = f"""SELECT DISTINCT t.id trip_id,t.route_id,t.direction,r.line,r.type,
+                s.id stop_id,s.parent FROM times st JOIN trips t ON t.id=st.trip_id
+                JOIN routes r ON r.id=t.route_id JOIN stops s ON s.id=st.stop_id
+                WHERE st.stop_id IN ({marks}) AND st.pickup<>1"""
+            args = list(ids)
+            if line:
+                sql += " AND r.line=?"
+                args.append(line)
+            if direction:
+                sql += " AND t.headsign=?"
+                args.append(direction)
+            contexts = [dict(r) for r in db.execute(sql, args)]
+            routes = db.execute("SELECT id,line FROM routes").fetchall()
+            result["alerts"] = select_alerts(snapshot.alerts, contexts, routes, now.timestamp())
+        return result
 
     def departures(
         self, stop_id, realtime, now, limit=10, horizon=1440, line=None, direction=None, previous_limit=0

@@ -9,7 +9,7 @@ globalThis.HTMLElement = class {
 globalThis.customElements = { get: (name) => elements.get(name), define: (name, value) => elements.set(name, value) };
 globalThis.window = {};
 const source = await readFile(new URL('../custom_components/ids_jmk/www/ids-jmk-departures-card.js', import.meta.url));
-const { departureView, isUpcoming, transportIcon } = await import(`data:text/javascript;base64,${source.toString('base64')}`);
+const { departureView, isUpcoming, transportIcon, departureDay } = await import(`data:text/javascript;base64,${source.toString('base64')}`);
 const now = Date.parse('2026-10-11T18:00:00+02:00');
 const row = { scheduled_departure: '2026-10-11T18:03:00+02:00', departure_time: '2026-10-11T18:05:00+02:00', delay_seconds: 120 };
 
@@ -86,4 +86,29 @@ test('transport icons use known MDI names and can be hidden independently', () =
     assert.ok(hidden.includes('icon="mdi:bicycle"'));
   }
   for (const mode of [undefined, 'unknown', 'toString', '<script>']) assert.equal(transportIcon(mode), null);
+});
+
+test('departure day uses Prague calendar dates across midnight, DST and year boundaries', () => {
+  const cases = [
+    ['2026-10-11T23:55:00+02:00', '2026-10-11T18:00:00+02:00', ''],
+    ['2026-10-12T00:05:00+02:00', '2026-10-11T23:55:00+02:00', 'zítra'],
+    ['2026-10-13T04:39:00+02:00', '2026-10-11T23:55:00+02:00', '13.10.'],
+    ['2026-12-31T23:05:00Z', '2026-12-31T12:00:00Z', 'zítra'],
+    ['2026-11-01T04:39:00+01:00', '2026-10-31T23:55:00+01:00', 'zítra'],
+    ['2026-03-30T00:05:00+02:00', '2026-03-28T23:55:00+01:00', '30.3.'],
+    ['2026-10-26T23:55:00+01:00', '2026-10-25T00:05:00+02:00', 'zítra'],
+    ['2026-10-12T00:05:00+02:00', '2026-10-12T00:00:00+02:00', ''],
+    ['2026-10-11T23:55:00+02:00', '2026-10-12T00:00:00+02:00', '11.10.'],
+  ];
+  for (const [value, current, expected] of cases) assert.equal(departureDay(value, Date.parse(current)), expected);
+  for (const value of [undefined, null, '', 'invalid']) assert.equal(departureDay(value, now), '');
+});
+test('day column follows scheduled time and can be hidden without changing the countdown', () => {
+  const today = new Date().toISOString();
+  const future = new Date(Date.now() + 3 * 86400000).toISOString();
+  const state = (scheduled, effective) => ({state:'5',attributes:{...attributes,departures:[{...row,scheduled_departure:scheduled,departure_time:effective}]}});
+  assert.ok(!render(state(today, future)).includes('class="labels with-day'));
+  assert.ok(render(state(future, future)).includes('class="labels with-day'));
+  assert.ok(!render(state(future, future), {show_departure_day:false}).includes('class="labels with-day'));
+  assert.equal(departureView(state(future,future).attributes.departures[0]).scheduled.length, 5);
 });

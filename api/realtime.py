@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from google.transit import gtfs_realtime_pb2 as pb
 
+from .alerts import parse_alert
 from .gtfs import iso, normalize_stop, service_epoch
 
 
@@ -72,21 +73,7 @@ class Realtime:
                 t = entity.trip_update
                 updates[(t.trip.trip_id, t.trip.start_date)] = t
             if entity.HasField("alert"):
-                a = entity.alert
-
-                def translated(text):
-                    return next(
-                        (x.text for x in text.translation if x.language.startswith("cs")),
-                        next((x.text for x in text.translation), ""),
-                    )
-
-                alerts.append(
-                    {
-                        "id": entity.id,
-                        "title": translated(a.header_text),
-                        "description": translated(a.description_text),
-                    }
-                )
+                alerts.append(parse_alert(entity))
         self.snapshot = Snapshot(stamp, time.time(), vehicles, updates, alerts)
 
     def fresh(self, stamp, now):

@@ -262,7 +262,7 @@ def test_feed_parsing(monkeypatch):
 
 
 def test_api_readiness_missing_ids_and_bounds(tmp_path):
-    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=False))
+    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=False, realtime_enabled=True))
     with TestClient(app) as client:
         assert client.get("/health/live").status_code == 200
         assert client.get("/health/ready").status_code == 503
@@ -388,7 +388,7 @@ def test_map_badge_rejects_unusable_position(timetable, unusable):
 
 
 def test_previous_api_schema_and_bounds(tmp_path):
-    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=False))
+    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=False, realtime_enabled=True))
     with TestClient(app) as client:
         app.state.timetable.import_zip(archive(tmp_path / "feed.zip"))
         for value in (-1, 11):
@@ -446,7 +446,7 @@ def test_source_outage_keeps_imported_schedule(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "api.main.httpx.AsyncClient", lambda **kwargs: real_client(transport=transport, **kwargs)
     )
-    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=True))
+    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=True, realtime_enabled=True))
     app.state.timetable.import_zip(archive(tmp_path / "feed.zip"))
     with TestClient(app) as client:
         for _ in range(100):
@@ -572,7 +572,7 @@ def test_transport_fields_survive_api_serialization(tmp_path, monkeypatch):
             return at("2026-10-11T13:55:00").astimezone(tz)
 
     monkeypatch.setattr("api.main.datetime", FixedDatetime)
-    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=False))
+    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=False, realtime_enabled=True))
     with TestClient(app) as client:
         app.state.timetable.import_zip(archive(tmp_path / "feed.zip"))
         board_response = client.get("/api/v1/stops/P/departures?previous_limit=1").json()

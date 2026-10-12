@@ -49,7 +49,7 @@ def test_card_registration_uses_content_version():
     from hashlib import sha256
     from types import SimpleNamespace
 
-    from custom_components.ids_jmk.frontend import CARD_PATH, CARD_URL, async_register_card
+    from custom_components.ids_jmk.frontend import CARD_PATH, async_register_card
 
     async def run():
         hass = SimpleNamespace(
@@ -58,12 +58,18 @@ def test_card_registration_uses_content_version():
         )
         with patch("custom_components.ids_jmk.frontend.add_extra_js_url") as register:
             await async_register_card(hass)
-        paths = hass.http.async_register_static_paths.call_args.args[0]
-        assert len(paths) == 1
-        assert paths[0].url_path == CARD_URL
-        assert paths[0].path == str(CARD_PATH)
-        assert paths[0].cache_headers is False
-        version = sha256(CARD_PATH.read_bytes()).hexdigest()[:12]
-        register.assert_called_once_with(hass, f"{CARD_URL}?v={version}")
+        assert hass.http.async_register_static_paths.call_count == 2
+        for call, name in zip(hass.http.async_register_static_paths.call_args_list,
+                              ("ids-jmk-departures-card.js", "ids-jmk-alerts-card.js"), strict=True):
+            path = CARD_PATH.with_name(name)
+            url = f"/ids_jmk/{name}"
+            paths = call.args[0]
+            assert len(paths) == 1
+            assert paths[0].url_path == url
+            assert paths[0].path == str(path)
+            assert paths[0].cache_headers is False
+            version = sha256(path.read_bytes()).hexdigest()[:12]
+            register.assert_any_call(hass, f"{url}?v={version}")
+        assert register.call_count == 2
 
     asyncio.run(run())

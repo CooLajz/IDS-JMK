@@ -9,7 +9,7 @@ Poskytovatelem jízdních řádů a realtime dat je **KORDIS JMK, a.s.** Projekt
 
 Ověřeno 11. 10. 2026: přímo nad odkazy na oba zdroje poskytovatel uvádí „Data lze použít v souladu s licencí CC BY40.“ Tato konkrétní informace o GTFS má přednost před obecným licenčním textem v patičce webu poskytovatele.
 
-Parser stahuje původní zdroje přímo z KORDIS, nikoli týdenní kopii z portálu Brna. Stažená data nejsou součástí zdrojového repozitáře, Docker obrazů ani instalačních archivů. Každá instance je získá při spuštění a následně aktualizuje.
+Parser stahuje původní zdroje přímo z KORDIS, nikoli týdenní kopii z portálu Brna. Stažená data nejsou součástí zdrojového repozitáře, Docker obrazů ani instalačních archivů. Každá instance získá při spuštění statické GTFS a následně je aktualizuje. Realtime se stahuje pouze při zapnutí pomocí `REALTIME_ENABLED=true`; výchozí je vypnutý.
 
 ## Uvedení zdroje ve vlastních aplikacích
 
