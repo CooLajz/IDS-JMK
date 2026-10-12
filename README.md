@@ -4,7 +4,7 @@
 
 Vlastní server pro jízdní řády a realtime data IDS JMK. Poskytuje JSON API pro odjezdové displeje, weby a Home Assistant. Volitelný web nabízí vyhledávání zastávek, odjezdovou tabuli a detail spoje s polohou vozidla.
 
-**Verze 0.1.4.** Instalační Compose soubory pro Portainer a ZIP integrace Home Assistantu jsou součástí [vydání na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API, webu a parseru pro HA se vydávají samostatně pro Linux AMD64 a ARM64.
+**Verze 0.1.5.** Instalační Compose soubory pro Portainer a ZIP integrace Home Assistantu jsou součástí [vydání na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API, webu a parseru pro HA se vydávají samostatně pro Linux AMD64 a ARM64.
 
 ## Součásti
 
