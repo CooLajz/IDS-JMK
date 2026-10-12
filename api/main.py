@@ -15,9 +15,10 @@ from fastapi.responses import JSONResponse
 from .config import Settings
 from .downloads import SourceDownloader, source_key
 from .gtfs import TZ, Timetable, iso
-from .models import DepartureBoard
+from .models import DepartureBoard, MapSelection
 from .realtime import Realtime
 from .statistics import Statistics, StatisticsMiddleware
+from .vehicle_map import catalogue, map_vehicles
 
 LOG = logging.getLogger("ids_jmk")
 
@@ -272,6 +273,18 @@ def create_app(settings=None):
                 realtime.trip_vehicles(trip_id, result["stops"], day, time.time()) if result["active"] else []
             )
         return result
+
+    @app.get("/api/v1/map/routes")
+    def map_routes():
+        ready()
+        return catalogue(timetable)
+
+    @app.post("/api/v1/map/vehicles")
+    def selected_vehicles(selections: list[MapSelection]):
+        ready()
+        if len(selections) > 20:
+            raise HTTPException(422, "Vyberte nejvýše 20 linek.")
+        return map_vehicles(timetable, realtime, selections, settings.realtime_enabled)
 
     @app.get("/api/v1/vehicles")
     def vehicles(trip_id: str | None = None):

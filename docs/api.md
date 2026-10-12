@@ -152,3 +152,20 @@ Statistiky a HTTP validátory se ukládají do `statistics.sqlite3` v `DATA_DIR`
 Oba zdroje používají `If-None-Match` a `If-Modified-Since`, pokud zdroj dříve poskytl `ETag` nebo `Last-Modified` a server má odpovídající platná lokální data. HTTP 304 nevyvolá nové zpracování a neposune čas posledního stažení. Bez podpory validátorů se soubor stáhne běžným GETem. Poškozený či neúplný soubor nepřepíše validátory poslední přijaté verze.
 
 Validátory platí pouze pro konkrétní zdrojovou URL a lokální verzi dat. Změna URL, chybějící data nebo neplatná realtime kopie vynutí celé stažení. Realtime kopie se ukládá do `realtime-cache.dat`; při restartu se ověří její otisk. Obnovení z disku ani odpověď 304 **neomlazují čas feedu nebo vozidel**. Posouzení stáří dál používá původní čas poskytovatele. Při `REALTIME_ENABLED=false` se uložená realtime kopie nepoužije.
+
+### Data pro mapovou kartu
+
+- `GET /api/v1/map/routes`: katalog linek (`id`, `line`, `name`) a směrů
+  (`directions`: `id`, `label`). Popisky směrů vycházejí z nejčastějších cílů.
+- `POST /api/v1/map/vehicles`: JSON pole nejvýše 20 položek
+  `{"route_id":"…","direction":"*"}`. Hvězdička zahrne oba směry; prázdný
+  výběr vrací prázdný seznam. Odpověď obsahuje `vehicles`, `realtime_enabled`,
+  `stale`, `updated_at` a `generated_at`. Vozidla obsahují linku, směr, cíl,
+  provozní den a čerstvou GPS polohu. Uplatňuje se kalendář a časové okno spoje,
+  včetně předchozího provozního dne po půlnoci. Nejde o filtr příštích odjezdů.
+- Pro zastávky vybraného vozidla použijte existující detail spoje s jeho
+  `trip_id` a `service_date`.
+
+HA zpřístupňuje tyto pevně vymezené operace přihlášeným klientům pomocí příkazů
+`ids_jmk/map_sources` a `ids_jmk/map`. Mapová data nevytvářejí entity a neukládají
+se do Recorderu.

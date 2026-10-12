@@ -28,10 +28,14 @@ class Client:
         self.session = session
         self.base_url = normalize_url(base_url)
 
-    async def get(self, path, params=None):
+    async def get(self, path, params=None, *, payload=None):
         try:
-            async with self.session.get(
-                f"{self.base_url}/api/v1/{path}", params=params, timeout=aiohttp.ClientTimeout(total=15)
+            async with self.session.request(
+                "GET" if payload is None else "POST",
+                f"{self.base_url}/api/v1/{path}",
+                params=params,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=15),
             ) as response:
                 if response.status != 200:
                     raise APIError(f"HTTP {response.status}")

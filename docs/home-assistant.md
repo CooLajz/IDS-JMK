@@ -120,3 +120,37 @@ Při výchozím `REALTIME_ENABLED=false` funguje běžná odjezdová karta pouze
 Volba **Zobrazit číslo linky** (`show_line_number`, výchozí `true`) skrývá číslo nezávisle na piktogramu druhu dopravy. Hodí se například pro zastávku s jedinou linkou. Pokud skryjete číslo i piktogram, celý sloupec zmizí a uvolní prostor pro název směru. Při skrytém čísle a neznámém druhu dopravy všech viditelných spojů se prázdný sloupec rovněž nezobrazuje. Nastavení ovlivňuje pouze vzhled karty, nikoli filtry nebo data senzoru.
 
 Volby **Zobrazit záhlaví** (`show_header`) a **Zobrazit zápatí** (`show_footer`) jsou výchozí zapnuté a lze je vypnout nezávisle. Skrytí záhlaví odstraní ikonu a název tabule; názvy sloupců zůstanou viditelné. Skrytí zápatí odstraní stav dat a čas aktualizace. Vypnutím obou voleb získáte samotnou tabulku v moderním i kompaktním vzhledu. Hlášení o nedostupném senzoru nebo prázdné tabuli zůstávají zobrazená.
+
+## Mapa vehyklů (první verze)
+
+Karta **IDS JMK — Mapa vehyklů** (`custom:ids-jmk-map-card`) zobrazuje aktuální
+polohy vybraných linek bez vytváření entit pro vozidla. V editoru vyberte existující
+připojení integrace jako zdroj dat, přidejte linky a u každé zvolte jeden nebo oba
+směry. Filtry mapy jsou nezávislé na zastávce a odjezdech zdrojové tabule.
+Směry vycházejí z GTFS `direction_id`; názvy nabízejí nejčastější cíle a zahrnují
+i zkrácené spoje stejného směru. Výběr používá `route_id`, nikoli jen číslo linky.
+
+Karta se obnovuje každých 30 sekund, server nadále dodržuje vlastní interval
+stahování realtime. Zobrazuje pouze čerstvé použitelné polohy. Při chybě připojení,
+zastarání dat nebo vypnutém realtime značky zmizí a karta zobrazí vysvětlení.
+Kliknutím na vozidlo zobrazíte detail a zastávky celého spoje. Přerušovaná čára
+je pouze orientační spojnice zastávek: aktuální zdroj GTFS neobsahuje `shapes.txt`.
+Tlačítkem **Přehled** přizpůsobíte mapu všem zobrazeným vozidlům.
+
+Je nutné aktualizovat **API i integraci**, restartovat HA a obnovit dashboard.
+Karta se registruje automaticky stejně jako tabule a upozornění. Připojení
+integrace musí být načtené; není nutné přidávat další senzor. Komunikace s API
+probíhá přes přihlášené WebSocket připojení HA, nikoli přímo z prohlížeče.
+Mapový podklad OpenStreetMap prohlížeč načítá z internetu. Leaflet 1.9.4 je
+přibalen lokálně včetně licence v `www/map-vendor`.
+
+Konfiguraci vytváří vizuální editor; odpovídající YAML má tuto strukturu:
+
+```yaml
+type: custom:ids-jmk-map-card
+title: Mapa vehyklů
+entry_id: ID_PRIPOJENI_Z_EDITORU
+selections:
+  - route_id: ID_LINKY_Z_EDITORU
+    direction: "*" # Oba směry; konkrétní směr má hodnotu z GTFS.
+```

@@ -94,3 +94,8 @@ class DepartureBoard(BaseModel):
         description="Při neaktuálním zdroji je alerts prázdné; nejde o potvrzení provozu bez omezení.",
     )
     alerts_updated_at: str | None = None
+
+
+class MapSelection(BaseModel):
+    route_id: str = Field(min_length=1, max_length=200)
+    direction: str = Field(default="*", max_length=20)

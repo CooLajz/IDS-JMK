@@ -3,7 +3,7 @@
   "name": "IDS JMK",
   "codeowners": ["@CooLajz"],
   "config_flow": true,
-  "dependencies": ["frontend", "http"],
+  "dependencies": ["frontend", "http", "websocket_api"],
   "documentation": "https://github.com/CooLajz/IDS-JMK/blob/main/docs/home-assistant.md",
   "integration_type": "service",
   "iot_class": "local_polling",

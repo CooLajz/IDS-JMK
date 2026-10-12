@@ -586,3 +586,59 @@ def test_transport_fields_survive_api_serialization(tmp_path, monkeypatch):
         schema = client.get("/openapi.json").json()["components"]["schemas"]["Departure"]
         assert "route_type" in schema["required"]
         assert "transport_mode" in schema["required"]
+
+
+def test_map_catalogue_and_direction_filters(timetable):
+    from api.models import MapSelection
+    from api.vehicle_map import catalogue, map_vehicles
+
+    now = at('2026-10-11T14:03:00')
+    rt = Realtime()
+    rt.snapshot = vehicle_rt(now)
+    route = catalogue(timetable)['routes'][0]
+    assert route['id'] == 'R'
+    assert route['directions'] == [{'id': '0', 'label': 'Konečná'}]
+    for direction in ('*', '0'):
+        rows = map_vehicles(timetable, rt, [MapSelection(route_id='R', direction=direction)], True, now)
+        assert len(rows['vehicles']) == 1
+        assert rows['vehicles'][0]['destination'] == 'Konečná'
+    assert not map_vehicles(timetable, rt, [MapSelection(route_id='R', direction='1')], True, now)['vehicles']
+    assert not map_vehicles(timetable, rt, [], True, now)['vehicles']
+    selection = [MapSelection(route_id='R')]
+    assert not map_vehicles(timetable, rt, selection, False, now)['vehicles']
+    rt.snapshot = vehicle_rt(now, age=181)
+    assert not map_vehicles(timetable, rt, selection, True, now)['vehicles']
+    rt.snapshot = vehicle_rt(now)
+    rt.snapshot.vehicles[('T', '')]['position'] = {'lat': 0, 'lon': 0}
+    assert not map_vehicles(timetable, rt, selection, True, now)['vehicles']
+
+
+def test_map_previous_service_day_and_calendar(timetable):
+    from api.models import MapSelection
+    from api.vehicle_map import map_vehicles
+
+    now = at('2026-10-12T01:10:00')
+    rt = Realtime()
+    vehicle = vehicle_rt(now).vehicles[('T', '')]
+    vehicle.update(trip_id='N')
+    rt.snapshot = Snapshot(int(now.timestamp()), now.timestamp(), {('N', ''): vehicle})
+    rows = map_vehicles(timetable, rt, [MapSelection(route_id='R')], True, now)['vehicles']
+    assert len(rows) == 1
+    assert rows[0]['service_date'] == '2026-10-11'
+    now = at('2026-10-12T14:03:00')
+    rt.snapshot = vehicle_rt(now)
+    assert not map_vehicles(timetable, rt, [MapSelection(route_id='R')], True, now)['vehicles']
+
+
+def test_map_api_contract(tmp_path):
+    app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=False, realtime_enabled=False))
+    with TestClient(app) as client:
+        assert client.get("/api/v1/map/routes").status_code == 503
+        app.state.timetable.import_zip(archive(tmp_path / "feed.zip"))
+        assert client.get("/api/v1/map/routes").json()["routes"][0]["id"] == "R"
+        selection = {"route_id": "R", "direction": "*"}
+        data = client.post("/api/v1/map/vehicles", json=[selection]).json()
+        assert data["realtime_enabled"] is False
+        assert data["vehicles"] == []
+        assert client.post("/api/v1/map/vehicles", json=[selection] * 21).status_code == 422
+        assert client.post("/api/v1/map/vehicles", json=[{"route_id": ""}]).status_code == 422

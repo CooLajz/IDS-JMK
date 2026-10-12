@@ -10,12 +10,14 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .client import APIError, Client
 from .const import DOMAIN, PLATFORMS
 from .frontend import async_register_card
+from .vehicle_map import register_map
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass, config):
     await async_register_card(hass)
+    register_map(hass)
     return True
 
 

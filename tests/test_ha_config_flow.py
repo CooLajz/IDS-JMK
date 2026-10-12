@@ -58,9 +58,10 @@ def test_card_registration_uses_content_version():
         )
         with patch("custom_components.ids_jmk.frontend.add_extra_js_url") as register:
             await async_register_card(hass)
-        assert hass.http.async_register_static_paths.call_count == 2
-        for call, name in zip(hass.http.async_register_static_paths.call_args_list,
-                              ("ids-jmk-departures-card.js", "ids-jmk-alerts-card.js"), strict=True):
+        assert hass.http.async_register_static_paths.call_count == 4
+        for call, name in zip(hass.http.async_register_static_paths.call_args_list[:3],
+                              ("ids-jmk-departures-card.js", "ids-jmk-alerts-card.js", "ids-jmk-map-card.js"),
+                              strict=True):
             path = CARD_PATH.with_name(name)
             url = f"/ids_jmk/{name}"
             paths = call.args[0]
@@ -70,6 +71,35 @@ def test_card_registration_uses_content_version():
             assert paths[0].cache_headers is False
             version = sha256(path.read_bytes()).hexdigest()[:12]
             register.assert_any_call(hass, f"{url}?v={version}")
-        assert register.call_count == 2
+        assert register.call_count == 3
+
+    asyncio.run(run())
+
+
+def test_map_bridge_uses_entry_and_fixed_paths():
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    from custom_components.ids_jmk.vehicle_map import request
+
+    async def run():
+        entry = SimpleNamespace(entry_id='source', domain='ids_jmk', data={'base_url': 'http://api.test'})
+        hass = SimpleNamespace(data={'ids_jmk': {'source': object()}},
+                               config_entries=SimpleNamespace(async_get_entry=Mock(return_value=entry)))
+        connection = Mock()
+        handler = request.__wrapped__
+        msg = {'id': 1, 'entry_id': 'source', 'action': 'vehicles',
+               'selections': [{'route_id': 'R', 'direction': '*'}]}
+        with patch('custom_components.ids_jmk.vehicle_map.async_get_clientsession'), \
+             patch('custom_components.ids_jmk.vehicle_map.Client') as client:
+            client.return_value.get = AsyncMock(return_value={'vehicles': []})
+            await handler(hass, connection, msg)
+            client.return_value.get.assert_awaited_once_with('map/vehicles', payload=msg['selections'])
+            connection.send_result.assert_called_once_with(1, {'vehicles': []})
+            client.return_value.get.reset_mock()
+            entry.domain = 'other'
+            await handler(hass, connection, msg)
+            client.return_value.get.assert_not_awaited()
+            connection.send_error.assert_called_once()
 
     asyncio.run(run())
