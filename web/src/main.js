@@ -22,11 +22,12 @@ let selectedTrip = null,
   nextRefreshAt = 0;
 const boardNow = () =>
   new Date(board.generated_at).getTime() + performance.now() - boardReceivedAt;
-const timeText = (v) =>
+const timeText = (v, includeSeconds = false) =>
   new Date(v).toLocaleTimeString("cs-CZ", {
     timeZone: "Europe/Prague",
     hour: "2-digit",
     minute: "2-digit",
+    ...(includeSeconds ? { second: "2-digit" } : {}),
   });
 function vehicleFeatures(d, includeTransport = false) {
   const features = document.createElement("span");
@@ -467,7 +468,7 @@ async function updateTrip() {
       caption.textContent = "Aktualizace polohy";
       const updated = document.createElement("time");
       updated.dateTime = vehicles[0].updated_at;
-      updated.textContent = timeText(vehicles[0].updated_at);
+      updated.textContent = timeText(vehicles[0].updated_at, true);
       updated.title = new Date(vehicles[0].updated_at).toLocaleString("cs-CZ", { timeZone: "Europe/Prague" });
       $("detail-status").append(caption, updated);
     } else {
