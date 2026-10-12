@@ -15,7 +15,7 @@ Tag spouští také znovu všechny kontroly z CI. Pro každý nový release ově
 
 ## První vydání aplikace HA
 
-Aplikace používá předem sestavený obraz; Supervisor ji nesestavuje ze zdrojů. Větev s aplikačním manifestem musí odkazovat na existující veřejný číselný tag obrazu. První vydání aplikace je připraveno jako `1.4.0`; jeho sestavení spustí tag `v1.4.0`. Samotná verze v manifestu neznamená již vydaný HA obraz. Před vydáním sjednoťte všechny verze na nové nepoužité číslo; existující tag `v0.1.3` nepřepisujte. Po úspěšném publikování odstraňte upozornění o nedostupnosti prvního obrazu v README a návodech a doplňte changelog aplikace.
+Aplikace používá předem sestavený obraz; Supervisor ji nesestavuje ze zdrojů. První vydání aplikace je `0.1.4` a jeho sestavení spouští tag `v0.1.4`. Instalační manifest musí odkazovat na existující veřejný číselný tag obrazu. Při dalších vydáních sjednoťte všechny verze na nové nepoužité číslo a aktualizujte changelog aplikace. Již vydané tagy nepřepisujte.
 
 Vývojové sestavení publikuje také `ghcr.io/coolajz/ids-jmk-ha:dev` a `dev-<SHA>`. Instalační manifest HA zůstává na číselné verzi, takže běžní uživatelé nedostávají vývojové obrazy automaticky.
 

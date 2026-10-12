@@ -1,6 +1,6 @@
-# 1.4.0
+# 0.1.4
 
-Připravované první vydání aplikace pro Home Assistant.
+První vydání aplikace pro Home Assistant; do ověření skutečné instalace v HA OS je označena jako experimentální.
 
 - Samostatná aplikace parseru pro HA OS na ARM64 a AMD64.
 - Nastavení realtime a intervalů přímo v HA.

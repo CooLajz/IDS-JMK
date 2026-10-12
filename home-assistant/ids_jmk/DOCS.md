@@ -2,9 +2,9 @@
 
 Aplikace vyžaduje Home Assistant OS na ARM64 nebo AMD64. Home Assistant Container ani 32bitový systém nejsou podporovány.
 
-## Dostupnost prvního vydání
+## Verze a podpora
 
-Podpora aplikace je připravena pro první vydání; samotná přítomnost souborů v repozitáři neznamená, že je již publikován instalační obraz. Před první instalací ověřte dokončení vydání obrazu `ghcr.io/coolajz/ids-jmk-ha` s verzí uvedenou v konfiguraci aplikace. Označení experimentální zůstává do ověření v HA OS.
+První vydání aplikace je **0.1.4**. HA stáhne předem sestavený obraz `ghcr.io/coolajz/ids-jmk-ha` s verzí uvedenou v konfiguraci aplikace. Označení experimentální zůstává do ověření v HA OS; kontejnery byly ověřeny v CI na ARM64 i AMD64.
 
 ## Přidání repozitáře
 
