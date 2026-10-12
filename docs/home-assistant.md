@@ -39,12 +39,13 @@ highlight_minutes: 5 # 0 vypne zelené zvýraznění
 # show_platform: true
 # show_accessibility: true
 # show_transport_icon: true
+# show_line_number: true
 # show_departure_day: true
 ```
 
 ID entity nahraďte skutečným ID vytvořeného senzoru. Karta podporuje světlý i tmavý motiv HA. Sloupec **Odjezd** uvádí jízdní řád, sloupec **Zpož. min** obsahuje nenulové odhadované zpoždění; sloupec **Za** již zahrnuje dostupný odhad, nic se k němu nepřičítá. Odpočet se přepočítává každých 15 sekund, data senzoru každých 30 sekund. Piktogramy vozíčku a kola vycházejí z jízdního řádu, nepotvrzují aktuálně nasazené vozidlo. Při výpadku API nebo zastaralých datech karta zobrazí upozornění.
 
-Vzhled **Moderní** používá větší odpočet a vzdušnější řádky. **Kompaktní** má menší záhlaví a každý spoj je vždy na jednom řádku stejné výšky, včetně zpoždění a stanoviště. Zpoždění má v obou variantách vlastní sloupec; pokud není uvedeno nebo se zaokrouhluje na nulu, buňka zůstane prázdná. Údaje i ikony jsou svisle vycentrované. Číslo v drobném štítku vedle cíle označuje stanoviště. Ikonky vybavení se zobrazují vedle cíle a lze je vypnout přepínačem v editoru (`show_accessibility: false`). Moderní vzhled dlouhé cíle zalamuje; kompaktní je zkracuje výpustkou a plný název ponechá v popisku.
+Vzhled **Moderní** používá větší odpočet a vzdušnější řádky. **Kompaktní** má menší záhlaví a každý spoj je vždy na jednom řádku stejné výšky, včetně zpoždění a stanoviště. Sloupec zpoždění se v obou variantách zobrazí pouze tehdy, pokud alespoň jeden z viditelných nezrušených spojů obsahuje nenulové zpoždění po zaokrouhlení na minuty. Jinak se automaticky skryje včetně záhlaví a uvolní prostor pro směr. Při vypnutém realtime zůstává skrytý. Pokud je sloupec zobrazený, řádky bez zpoždění mají prázdnou buňku, aby zůstaly zarovnané. Údaje i ikony jsou svisle vycentrované. Číslo v drobném štítku vedle cíle označuje stanoviště. Ikonky vybavení se zobrazují vedle cíle a lze je vypnout přepínačem v editoru (`show_accessibility: false`). Moderní vzhled dlouhé cíle zalamuje; kompaktní je zkracuje výpustkou a plný název ponechá v popisku.
 
 Zelený odpočet označuje blížící se odjezd v nastaveném počtu minut (výchozí **5**, rozsah **0–60**, **0** zvýraznění vypne). Hranice pracuje s odjezdem včetně dostupného odhadu zpoždění. Zrušené nebo již odjeté spoje a zastaralá data se nezvýrazňují.
 
@@ -105,3 +106,5 @@ Nahraďte příklady skutečnými ID senzorů. Pole `entities` je dostupné i ve
 Nedostupný senzor, zastaralý feed, starší API bez podpory upozornění a záměrně vypnutý realtime mají odlišný popisek. Upozornění z neaktuálních zdrojů se nezobrazují jako platná; zbývající aktuální senzory se dále používají. Prázdný seznam při nedostupném zdroji nepotvrzuje provoz bez omezení. U linkových upozornění ověřte dopad na zastávku v původním textu.
 
 Při výchozím `REALTIME_ENABLED=false` funguje běžná odjezdová karta pouze s jízdním řádem a v zápatí uvádí „Jízdní řád · realtime vypnutý“. Nevyžaduje polohy ani zpoždění. Pro tento režim není potřeba přidávat kartu upozornění.
+
+Volba **Zobrazit číslo linky** (`show_line_number`, výchozí `true`) skrývá číslo nezávisle na piktogramu druhu dopravy. Hodí se například pro zastávku s jedinou linkou. Pokud skryjete číslo i piktogram, celý sloupec zmizí a uvolní prostor pro název směru. Při skrytém čísle a neznámém druhu dopravy všech viditelných spojů se prázdný sloupec rovněž nezobrazuje. Nastavení ovlivňuje pouze vzhled karty, nikoli filtry nebo data senzoru.

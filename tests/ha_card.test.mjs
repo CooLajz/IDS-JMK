@@ -112,3 +112,46 @@ test('day column follows scheduled time and can be hidden without changing the c
   assert.ok(!render(state(future, future), {show_departure_day:false}).includes('class="labels with-day'));
   assert.equal(departureView(state(future,future).attributes.departures[0]).scheduled.length, 5);
 });
+
+test('delay column follows displayed non-cancelled rows and realtime availability', () => {
+  const state = (departures, extra = {}) => ({state:'5',attributes:{...attributes,departures,...extra}});
+  const missing = {...row}; delete missing.delay_seconds;
+  for (const layout of ['modern','compact']) {
+    for (const departures of [[missing], [{...row,delay_seconds:null}], [{...row,delay_seconds:0}], [{...row,delay_seconds:29}], [{...row,cancelled:true}]]) {
+      const html=render(state(departures),{layout});
+      assert.ok(!html.includes('Zpož. min'));
+      assert.ok(!html.includes('<span class="delay"'));
+    }
+    assert.ok(!render(state([missing,row]),{layout,limit:1}).includes('Zpož. min'));
+    assert.ok(!render(state([row],{realtime_enabled:false}),{layout}).includes('Zpož. min'));
+    for (const seconds of [120,-120]) {
+      const html=render(state([missing,{...row,delay_seconds:seconds}]),{layout});
+      assert.ok(html.includes('Zpož. min'));
+      assert.equal((html.match(/<span class="delay"/g)||[]).length,2);
+      assert.ok(html.includes(seconds>0 ? '>+2</span>' : '>-2</span>'));
+    }
+  }
+  const card=new Card(); card.setConfig({entity});
+  for (const [departures,visible] of [[[missing],false],[[row],true],[[missing],false]]) {
+    card.hass={states:{[entity]:state(departures)}};
+    assert.equal(card.shadowRoot.innerHTML.includes('Zpož. min'),visible);
+  }
+});
+
+test('line number defaults to visible and is independent of transport icons', () => {
+  const state={state:'5',attributes:{...attributes,departures:[{...row,line:'501',transport_mode:'bus'}]}};
+  for (const layout of ['modern','compact']) {
+    const normal=render(state,{layout});
+    assert.ok(normal.includes('<span>501</span>') && normal.includes('icon="mdi:bus"'));
+    const iconOnly=render(state,{layout,show_line_number:false});
+    assert.ok(!iconOnly.includes('501') && iconOnly.includes('icon="mdi:bus"'));
+    assert.ok(iconOnly.includes('icon-only') && iconOnly.includes('<span>Druh</span>'));
+    const numberOnly=render(state,{layout,show_transport_icon:false});
+    assert.ok(numberOnly.includes('<span>501</span>') && !numberOnly.includes('icon="mdi:bus"'));
+    const neither=render(state,{layout,show_line_number:false,show_transport_icon:false});
+    assert.ok(!neither.includes('<span class="line"') && !neither.includes('<span>Linka</span>'));
+    const unknown=render({...state,attributes:{...state.attributes,departures:[{...row,line:'501',transport_mode:'unknown'}]}},{layout,show_line_number:false});
+    assert.ok(!unknown.includes('<span class="line"'));
+    assert.ok(neither.includes('Odjezd podle jízdního řádu'));
+  }
+});
