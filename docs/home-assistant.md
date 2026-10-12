@@ -8,6 +8,14 @@ Z [vydání projektu](https://github.com/CooLajz/IDS-JMK/releases) stáhněte `i
 
 Pro HACS je repozitář připraven jako vlastní repozitář typu **Integration**. Nejde o integraci přijatou do výchozího katalogu HACS; repozitář musíte přidat ručně.
 
+### Ikona integrace a aplikace
+
+Integrace obsahuje vlastní ikonu a logo ve složce `custom_components/ids_jmk/brand/`, včetně variant pro displeje s vyšším rozlišením. [Místní obrázky integrací podporuje Home Assistant od verze 2026.3](https://developers.home-assistant.io/docs/core/integration/brand_images/). Při ruční instalaci zkopírujte i tuto složku; ZIP vydání ji zahrnuje automaticky. Po aktualizaci restartujte Home Assistant a obnovte stránku nebo mobilní aplikaci. Starší podporované verze HA mohou integraci používat, ale vlastní ikonu nezobrazí.
+
+Aplikace **IDS JMK Parser** používá samostatné soubory `home-assistant/ids_jmk/icon.png` a `logo.png` vedle `config.json`. Po zveřejnění změny aktualizujte seznam repozitářů v obchodě s aplikacemi HA.
+
+Samotný seznam HACS může nadále zobrazovat zástupnou ikonu kvůli [známému problému HACS s místními obrázky integrací](https://github.com/hacs/integration/issues/5402). To neznamená chybu instalace; logo je rovněž součástí README v detailu repozitáře. Zobrazení v HACS závisí na opravě jeho rozhraní.
+
 V **Nastavení → Zařízení a služby → Přidat integraci → IDS JMK**:
 
 1. Zadejte adresu serveru, například `http://192.168.1.10:8080`. Pokud používáte webový kontejner, můžete zadat jeho adresu a port; `/api` proxy je jeho součástí.
