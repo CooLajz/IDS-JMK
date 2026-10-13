@@ -60,6 +60,10 @@ class ServiceAlert(BaseModel):
     key: str = Field(description="Obsahový klíč pro sloučení stejného upozornění z více tabulí.")
     title: str
     description: str
+    title_html: str | None = Field(default=None, description="Nadpis s omezeným HTML bez atributů.")
+    description_html: str | None = Field(
+        default=None, description="Popis s odstavci, zvýrazněním a seznamy; omezené HTML bez atributů."
+    )
     url: str | None
     cause: str
     effect: str

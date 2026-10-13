@@ -4,6 +4,12 @@ const TYPE = "ids-jmk-alerts-card";
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 const safeUrl = (value) => { try { const url = new URL(value); return ["https:", "http:"].includes(url.protocol) ? url.href : null; } catch { return null; } };
 
+export function alertMarkup(alert) {
+  const html = alert.description_html || alert.title_html;
+  if (typeof html === "string" && !/[<>]/.test(html.replace(/<\/?(?:p|br|strong|em|u|ul|ol|li)>/g, ""))) return html;
+  return escape(alert.description || alert.title);
+}
+
 export function collectAlerts(states, entities, now = Date.now()) {
   const merged = new Map(), issues = [];
   for (const id of [...new Set(entities)]) {
@@ -18,7 +24,7 @@ export function collectAlerts(states, entities, now = Date.now()) {
     for (const alert of a.alerts) {
       if (!alert || typeof alert !== "object") continue;
       // Never merge different text under the same provider ID or across server versions.
-      const key = JSON.stringify([alert.key || alert.id || "", alert.title, alert.description, alert.cause, alert.effect, alert.url]);
+      const key = JSON.stringify([alert.key || alert.id || "", alert.title, alert.description, alert.title_html, alert.description_html, alert.cause, alert.effect, alert.url]);
       if (!merged.has(key)) merged.set(key, { ...alert, mergeKey: key, matched_lines: new Set(), sources: new Set() });
       const item = merged.get(key);
       for (const line of alert.matched_lines || []) item.matched_lines.add(String(line));
@@ -41,6 +47,10 @@ const styles = `
   .lines { display:block; font-size:11px; font-weight:500; color:var(--secondary-text-color); margin:4px 0 0 15px; }
   .body { padding:0 12px 12px; font-size:13px; line-height:1.6; }
   .description { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .description.rich { white-space:normal; }
+  .description p { margin:0 0 .65em; }
+  .description p:last-child { margin-bottom:0; }
+  .description ul, .description ol { margin:.5em 0; padding-left:1.5em; }
   .sources { color:var(--secondary-text-color); font-size:11px; margin:10px 0 0; }
   a { display:inline-block; margin-top:8px; color:var(--primary-color); }
   .message { padding:0 18px 16px; font-size:13px; line-height:1.5; color:var(--secondary-text-color); }
@@ -76,7 +86,7 @@ class AlertsCard extends HTMLElement {
       ${alerts.length ? `<div class="items">${alerts.map(a=>{
         const heading = a.description?.split("\n").find(s=>s.trim()) || a.title || "Upozornění";
         const url=safeUrl(a.url);
-        return `<details data-key="${escape(a.mergeKey)}"><summary>${escape(heading)}<span class="lines">${a.matched_lines.length ? `Linky: ${escape(a.matched_lines.join(", "))}` : escape(a.title)}${a.scope === "line" ? " · Omezení na lince" : ""}</span></summary><div class="body"><p class="description">${escape(a.description || a.title)}</p>${url ? `<a href="${escape(url)}" target="_blank" rel="noopener noreferrer">Informace dopravního systému ↗</a>` : ""}<p class="sources">Tabule: ${escape(a.sources.join(" · "))}</p></div></details>`;
+        return `<details data-key="${escape(a.mergeKey)}"><summary>${escape(heading)}<span class="lines">${a.matched_lines.length ? `Linky: ${escape(a.matched_lines.join(", "))}` : escape(a.title)}${a.scope === "line" ? " · Omezení na lince" : ""}</span></summary><div class="body"><div class="description${a.description_html || a.title_html ? " rich" : ""}">${alertMarkup(a)}</div>${url ? `<a href="${escape(url)}" target="_blank" rel="noopener noreferrer">Informace dopravního systému ↗</a>` : ""}<p class="sources">Tabule: ${escape(a.sources.join(" · "))}</p></div></details>`;
       }).join("")}</div>` : `<div class="message">${issues.length ? "Z dostupných aktuálních zdrojů nejsou hlášena upozornění." : "Pro vybrané tabule nejsou hlášena žádná upozornění."}</div>`}
       </ha-card>`;
     if (html === this.markup) return;

@@ -179,6 +179,9 @@ Volba **Zobrazit den odjezdu** (`show_departure_day`, výchozí `true`) přidáv
 
 ## Karta upozornění z více tabulí
 
+Text výluk z parseru se zobrazuje s odstavci, tučným písmem, kurzívou a seznamy. HTML značky ze zdroje se nezobrazují jako text. Senzor nadále obsahuje čisté textové varianty `title` a `description`; karta využívá navíc formátování připravené serverem. Po aktualizaci parseru aktualizujte také integraci s kartou.
+
+
 Od verze 0.1.3 je součástí integrace také samostatná karta **IDS JMK — Upozornění**. V editoru dashboardu vyberte jeden nebo více senzorů odjezdových tabulí. Karta čte jejich atribut `alerts`, neodesílá další dotazy na server a stejné upozornění zobrazí pouze jednou. Upozornění na různých linkách se sloučí včetně čísel odpovídajících linek a názvů zdrojových tabulí. Text lze rozbalit; rozbalení zůstává zachované při aktualizaci.
 
 ```yaml

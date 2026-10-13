@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import test from 'node:test';
+import {alertMarkup as webMarkup} from '../web/src/alerts.js';
 const elements=new Map();
 globalThis.HTMLElement=class {attachShadow(){this.shadowRoot={innerHTML:'',querySelectorAll:()=>[]};}};
 globalThis.customElements={get:n=>elements.get(n),define:(n,v)=>elements.set(n,v)};
 globalThis.window={};
 const helper = await readFile(new URL('../custom_components/ids_jmk/www/board-visibility.js', import.meta.url));
 const source=await readFile(new URL('../custom_components/ids_jmk/www/ids-jmk-alerts-card.js',import.meta.url));
-const {collectAlerts}=await import(`data:text/javascript;base64,${Buffer.from(source.toString().replace('./board-visibility.js', `data:text/javascript;base64,${helper.toString('base64')}`)).toString('base64')}`);
+const {collectAlerts,alertMarkup}=await import(`data:text/javascript;base64,${Buffer.from(source.toString().replace('./board-visibility.js', `data:text/javascript;base64,${helper.toString('base64')}`)).toString('base64')}`);
 const now=Date.now();
 const alert={id:'1',key:'same',title:'Výluka',description:'Popis',matched_lines:['25'],scope:'line'};
 const state=(alerts,extra={})=>({state:'unknown',attributes:{alerts,alerts_stale:false,generated_at:new Date(now).toISOString(),...extra}});
@@ -33,4 +34,22 @@ test('card escapes provider text and unsafe links and validates sensor selection
   c.hass={states:{'sensor.a':state([{...alert,description:'<img src=x onerror=alert(1)>',url:'javascript:alert(1)'}])}};
   assert.ok(!c.shadowRoot.innerHTML.includes('<img'));assert.ok(c.shadowRoot.innerHTML.includes('&lt;img'));
   assert.ok(!c.shadowRoot.innerHTML.includes('href="javascript:'));
+});
+
+test('web and HA preserve server formatting and reject markup outside the formatting subset',()=>{
+  const html='<p>Výluka <strong>linky 25</strong> a <em>26</em>.</p><ul><li>Náhradní zastávka</li></ul>';
+  for(const markup of [alertMarkup,webMarkup]) {
+    assert.equal(markup({...alert,description_html:html}),html);
+    for(const unsafe of ['<img src=x onerror=evil()>','<p onclick="evil()">Výluka</p>',
+      '<script>evil()</script>','<svg><text>Test</text></svg>','<a href="javascript:evil()">Test</a>']) {
+      assert.equal(markup({...alert,description_html:unsafe}),'Popis');
+    }
+    assert.equal(markup({...alert,description_html:'&lt;img src=x&gt;'}),'&lt;img src=x&gt;');
+    assert.equal(markup({...alert,description:'A & B\nDruhý řádek'}),'A &amp; B\nDruhý řádek');
+  }
+  const c=new (elements.get('ids-jmk-alerts-card'))();
+  c.setConfig({entities:['sensor.a']});
+  c.hass={states:{'sensor.a':state([{...alert,description_html:html}])}};
+  assert.ok(c.shadowRoot.innerHTML.includes(html));
+  assert.ok(c.shadowRoot.innerHTML.includes('class="description rich"'));
 });

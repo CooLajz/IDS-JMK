@@ -7,6 +7,8 @@ from urllib.parse import urlsplit
 from google.protobuf.json_format import MessageToDict
 from google.transit import gtfs_realtime_pb2 as pb
 
+from .alert_text import format_alert_text
+
 
 def translated(value):
     return next(
@@ -17,6 +19,8 @@ def translated(value):
 
 def parse_alert(entity):
     a = entity.alert
+    title, title_html = format_alert_text(translated(a.header_text))
+    description, description_html = format_alert_text(translated(a.description_text))
     url = translated(a.url)
     try:
         if urlsplit(url).scheme.lower() not in ("http", "https"):
@@ -25,8 +29,10 @@ def parse_alert(entity):
         url = None
     result = {
         "id": entity.id,
-        "title": translated(a.header_text),
-        "description": translated(a.description_text),
+        "title": title,
+        "description": description,
+        "title_html": title_html,
+        "description_html": description_html,
         "url": url,
         "cause": pb.Alert.Cause.Name(a.cause),
         "effect": pb.Alert.Effect.Name(a.effect),

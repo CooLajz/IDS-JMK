@@ -7,10 +7,58 @@ from google.transit import gtfs_realtime_pb2 as pb
 from test_api import archive
 from test_api import timetable as timetable
 
+from api.alert_text import format_alert_text
 from api.config import Settings
 from api.gtfs import TZ
 from api.main import create_app
 from api.realtime import Realtime
+
+
+def test_kordis_alert_markup_is_readable_and_formatted(timetable):
+    f = feed()
+    a = f.entity[0].alert
+    a.header_text.translation[0].text = "<b>Omezení &amp; zdržení</b>"
+    a.description_text.translation[0].text = (
+        'Hustý provoz: <b>zdržení 5 až 15 min. <i>Modřice a Rajhrad.</i></b>'
+        '<p>Děkujeme&nbsp;za pochopení.</i></b>'
+    )
+    alert = board(timetable, f)["alerts"][0]
+    assert alert["title"] == "Omezení & zdržení"
+    assert alert["title_html"] == "<strong>Omezení &amp; zdržení</strong>"
+    assert alert["description"] == (
+        "Hustý provoz: zdržení 5 až 15 min. Modřice a Rajhrad.\n\nDěkujeme za pochopení."
+    )
+    assert alert["description_html"] == (
+        "Hustý provoz: <strong>zdržení 5 až 15 min. <em>Modřice a Rajhrad.</em></strong>"
+        "<p>Děkujeme za pochopení.</p>"
+    )
+
+
+def test_alert_markup_ignores_active_content_and_attributes():
+    plain, html = format_alert_text(
+        '<script>alert(1)</script><style>body{display:none}</style>'
+        '<svg><text>Skrytý text</text></svg><img src="x" onerror="evil()">'
+        '<p onclick="evil()">Použijte <b style="color:red">jinou zastávku</b>.'
+        '<a href="javascript:evil()">Podrobnosti</a></p>'
+    )
+    assert plain == "Použijte jinou zastávku.Podrobnosti"
+    assert html == "<p>Použijte <strong>jinou zastávku</strong>.Podrobnosti</p>"
+
+
+def test_encoded_and_broken_markup_and_plain_text():
+    assert format_alert_text("&lt;b&gt;Výluka&lt;/b&gt;") == ("Výluka", "<strong>Výluka</strong>")
+    assert format_alert_text("&amp;lt;i&amp;gt;Výluka&amp;lt;/i&amp;gt;") == ("Výluka", "<em>Výluka</em>")
+    assert format_alert_text("&#60;b&#62;Výluka&#60;/b&#62;") == ("Výluka", "<strong>Výluka</strong>")
+    assert format_alert_text("&#x3c;i&#x3e;Výluka&#x3c;/i&#x3e;") == ("Výluka", "<em>Výluka</em>")
+    assert format_alert_text("</i></b><p>Jedna<p>Dvě") == ("Jedna\n\nDvě", "<p>Jedna</p><p>Dvě</p>")
+    assert format_alert_text("A & B\nČas < 5 minut") == (
+        "A & B\nČas < 5 minut", "A &amp; B<br>Čas &lt; 5 minut"
+    )
+    assert format_alert_text("<ul><li>Jedna</li><li>Dvě</li></ul>") == (
+        "• Jedna\n\n• Dvě", "<ul><li>Jedna</li><li>Dvě</li></ul>"
+    )
+    nested = "<ul><li>Vnější<ul><li>Vnitřní</li></ul></li></ul>"
+    assert format_alert_text(nested)[1] == nested
 
 
 def feed(route="501", stop=None, start=None, end=None):
@@ -104,10 +152,14 @@ def test_alerts_in_same_json_independent_of_departure_limit(tmp_path):
     app = create_app(Settings(data_dir=tmp_path / "data", download_enabled=False, realtime_enabled=True))
     with TestClient(app) as client:
         app.state.timetable.import_zip(archive(tmp_path / "feed.zip"))
-        app.state.realtime.ingest(feed().SerializeToString())
+        message = feed()
+        message.entity[0].alert.description_text.translation[0].text = "<p>Výluka <b>linky 501</b>.</p>"
+        app.state.realtime.ingest(message.SerializeToString())
         data = client.get("/api/v1/stops/A/departures?limit=1&horizon=1").json()
         assert data["realtime_enabled"]
         assert len(data["alerts"]) == 1
+        assert data["alerts"][0]["description"] == "Výluka linky 501."
+        assert data["alerts"][0]["description_html"] == "<p>Výluka <strong>linky 501</strong>.</p>"
         assert not data["alerts_stale"] and data["alerts_updated_at"]
         assert client.get("/api/v1/stops/A/departures?line=8").json()["alerts"] == []
 

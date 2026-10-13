@@ -148,6 +148,12 @@ Při zapnutém realtime obsahuje stejná odpověď odjezdové tabule také:
 - `alerts_stale`: zda zdroj upozornění není aktuální. V takovém případě je `alerts` prázdné; neznamená to provoz bez omezení.
 - `alerts_updated_at`: čas zdrojového feedu, případně `null`.
 
+Texty `title` a `description` jsou čistý text bez značek HTML. Server převádí HTML zdroje na odstavce a zalomení řádků, dekóduje entity a u seznamů zachovává položky. Jsou vhodné pro senzory, jednoduché displeje a klienty bez podpory formátování.
+
+Volitelná pole `title_html` a `description_html` obsahují formátovanou variantu. Server povoluje pouze `p`, `br`, `strong`, `em`, `u`, `ul`, `ol` a `li`, vždy bez atributů. Tučné písmo a kurzíva zdroje se normalizují na `strong` a `em`; nezavřené značky se doplní a nadbytečné uzavírací značky odstraní. Skripty, styly a aktivní vložený obsah se vynechávají. Odkazy uvnitř textu se převádějí na jejich text; samostatný bezpečný odkaz zůstává v `url`.
+
+Přibalený web a HA karta upozornění používají formátovanou variantu a před vložením ještě ověřují stejnou omezenou sadu značek. U staršího API bez těchto polí zobrazí běžný text. Obsahový klíč zahrnuje i formátování, takže aktualizace vzhledu upozornění není zaměněna za starou verzi.
+
 `lines` uvádí linky z upozornění, `matched_lines` jen linky odpovídající vybrané tabuli a filtrům. `scope` rozlišuje `line`, `stop`, `trip` a `mixed`. Obsahový `key` slouží ke sloučení stejného upozornění z více tabulí. Intervaly `active_period` používají Unix sekundy, začátek je včetně a konec bez uvedeného okamžiku. Pokud interval chybí, upozornění platí po dobu přítomnosti v aktuálním feedu.
 
 Přiřazení respektuje zastávku či stanoviště, linku a cílový směr. Není omezené počtem vypsaných odjezdů ani jejich časovým horizontem; vychází z linek a spojů obsluhujících zastávku v načteném jízdním řádu. Více podmínek jednoho GTFS selektoru platí současně, více selektorů představuje alternativy. Podporovány jsou `route_id`, `route_type`, `direction_id`, `stop_id` a `trip` obsahující pouze `trip_id`. Selektory s dalšími nepodporovanými podmínkami (například `agency_id` či datum konkrétní jízdy uvnitř `trip`) se nepřiřazují, aby nedošlo k rozšíření jejich platnosti.

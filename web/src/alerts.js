@@ -1,4 +1,11 @@
-// Render provider text as text, never as HTML. Preserve expanded notices across refreshes.
+// Only the server's attribute-free formatting subset may become markup.
+const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+export function alertMarkup(alert) {
+  const html = alert.description_html || alert.title_html;
+  if (typeof html === 'string' && !/[<>]/.test(html.replace(/<\/?(?:p|br|strong|em|u|ul|ol|li)>/g, ''))) return html;
+  return escape(alert.description || alert.title);
+}
+// Preserve expanded notices across refreshes.
 export function renderAlerts(container, data) {
   const open = new Set([...container.querySelectorAll('details[open]')].map(d=>d.dataset.key));
   container.replaceChildren();
@@ -15,7 +22,9 @@ export function renderAlerts(container, data) {
     const summary=document.createElement('summary');summary.textContent=alert.description?.split('\n').find(s=>s.trim()) || alert.title || 'Upozornění';
     const lines=document.createElement('span');lines.className='alert-lines';lines.textContent=`Linky: ${(alert.matched_lines || []).join(', ')}${alert.scope==='line' ? ' · Omezení na lince, podrobnosti v textu' : ''}`;
     summary.append(lines);
-    const text=document.createElement('p');text.className='alert-description';text.textContent=alert.description || alert.title;
+    const text=document.createElement('div');text.className='alert-description';
+    text.innerHTML=alertMarkup(alert);
+    if (alert.description_html || alert.title_html) text.classList.add('rich');
     details.append(summary,text);
     try {
       const url=new URL(alert.url);
