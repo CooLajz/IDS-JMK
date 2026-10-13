@@ -1,7 +1,7 @@
-# 0.1.5-dev40001
+# 0.1.5-dev41001
 
-Vývojové sestavení z větve `main`.
+Vývojové sestavení z větve `develop`.
 
-Zdroj: [commit 7bfaef8](https://github.com/CooLajz/IDS-JMK/commit/7bfaef8e5d0e87a99596bead2a6903226369ef57).
+Zdroj: [commit c72d609](https://github.com/CooLajz/IDS-JMK/commit/c72d609f978e5fa465506796a5e48870add945c5).
 
 Sestavení prošlo kontrolami API, webu, integrace a kontejnerů na AMD64 a ARM64.
