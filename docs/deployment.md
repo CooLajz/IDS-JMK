@@ -45,7 +45,7 @@ docker compose -f compose.proxy.yaml -f compose.build.yaml up -d --build
 
 ### Vývojové verze z hlavní větve
 
-Po každém pushi do větve `main` workflow **Kontroly** spustí testy a po jejich úspěchu publikuje tři vývojové obrazy pro Linux AMD64 a ARM64:
+Po každém pushi do pracovní větve `develop` workflow **Kontroly** spustí testy a po jejich úspěchu publikuje tři vývojové obrazy pro Linux AMD64 a ARM64:
 
 - `ghcr.io/coolajz/ids-jmk-api:dev`
 - `ghcr.io/coolajz/ids-jmk-web:dev`

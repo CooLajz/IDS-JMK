@@ -17,15 +17,23 @@ Tag spouští také znovu všechny kontroly z CI. Pro každý nový release ově
 
 Aplikace používá předem sestavený obraz; Supervisor ji nesestavuje ze zdrojů. První vydání aplikace je `0.1.4` a jeho sestavení spouští tag `v0.1.4`. Instalační manifest musí odkazovat na existující veřejný číselný tag obrazu. Při dalších vydáních sjednoťte zdrojové verze na nové nepoužité číslo a aktualizujte changelog aplikace. Distribuovaný manifest stabilní aplikace zůstává na poslední sestavené verzi, dokud není hotové vydávací workflow. Již vydané tagy nepřepisujte.
 
+## Pracovní a distribuční větev
+
+Vývoj provádějte ve větvi `develop` a nastavte její upstream na `origin/develop`. Codex pak běžně commituje a pushuje tuto pracovní větev. Větev `main` slouží pro distribuci: workflow do ní po úspěšném sestavení přenese zdroje a aktualizuje manifesty HA. Do `main` neprovádějte běžné vývojové commity. Zdrojové definice workflow se používají přímo z `develop`; automatika je do `main` nekopíruje. Pokud je potřeba sladit definice workflow i ve výchozí větvi GitHubu, proveďte to jednorázovým běžným pushem po kontrole změny.
+
+Toto rozdělení zachovává URL repozitáře, identitu aplikací, jejich data a adresy API v HA. HACS zůstává ve stávajícím repozitáři. Oproti přidání větve do URL HA není potřeba aplikace přeinstalovat ani přepojovat integraci.
+
+Vydání připravujte a tagujte nad otestovaným commitem pracovní větve. Již existující tagy a vzdálené commity nepřepisujte.
+
 ## Kanály aplikace HA
 
-Workflow **Kontroly** po úspěšném pushi do `main` publikuje také HA obraz s jedinečnou verzí `<verze-projektu>-dev<pořadové-číslo>`. Čítač je `číslo běhu × 1000 + pokus`, takže jej knihovna verzí Home Assistantu správně řadí i při opakovaném spuštění (pokus 1–999). Nadále zachovává aliasy `dev` a `dev-<SHA>` pro Docker instalace. HA varianta Dev odkazuje na konkrétní sestavení, aby Supervisor mohl nabídnout aktualizaci.
+Workflow **Kontroly** po úspěšném pushi do pracovní větve `develop` publikuje také HA obraz s jedinečnou verzí `<verze-projektu>-dev<pořadové-číslo>`. Čítač je `číslo běhu × 1000 + pokus`, takže jej knihovna verzí Home Assistantu správně řadí i při opakovaném spuštění (pokus 1–999). Nadále zachovává aliasy `dev` a `dev-<SHA>` pro Docker instalace. HA varianta Dev odkazuje na konkrétní sestavení, aby Supervisor mohl nabídnout aktualizaci.
 
-Teprve po úspěšném dokončení všech vývojových obrazů zavolá workflow publikování nabídky Dev. Workflow **Vydání** aktualizuje stabilní nabídku po dokončení obrazů i příloh releasu. Společný workflow `ha-channel.yaml` generuje distribuované manifesty ze společné šablony a zapisuje je do `main` účtem `github-actions[bot]`. Používá `GITHUB_TOKEN` s oprávněním `contents: write`; nepotřebuje další tajný token. Pravidla větve musí tento zápis dovolovat. Pokud zápis selže, nabídka zůstane na předchozím sestavení a workflow hlásí chybu.
+Teprve po úspěšném dokončení všech vývojových obrazů zavolá workflow publikování nabídky Dev. Workflow **Vydání** aktualizuje stabilní nabídku po dokončení obrazů i příloh releasu. Společný workflow `ha-channel.yaml` přenese úspěšně otestované zdroje z `develop` do distribuční větve `main`, vygeneruje manifesty ze společné šablony a zapíše je účtem `github-actions[bot]`. Používá `GITHUB_TOKEN` s oprávněním `contents: write`; nepotřebuje další tajný token. Pravidla větve musí tento zápis dovolovat. Pokud zápis selže, nabídka zůstane na předchozím sestavení a workflow hlásí chybu.
 
-Automatické commity obsahují `[skip ci]` a použitý `GITHUB_TOKEN` při pushi sám nespouští další workflow, takže nevzniká nekonečné sestavování. Po dokončení publikování před dalšími místními úpravami stáhněte automatický commit z Gitu.
+Automatické commity obsahují `[skip ci]` a použitý `GITHUB_TOKEN` při pushi sám nespouští další workflow, takže nevzniká nekonečné sestavování. Automatika nezapisuje do pracovní větve `develop`, takže nevyžaduje stahování svých commitů před dalším vývojovým pushem. GitHub, HACS i stávající HA repozitář nadále používají `main`.
 
-Starý vývojový běh nesmí aktualizovat nabídku, pokud `main` již obsahuje novější změny zdrojů. Opakovaný starší release ani starší dev sestavení nesmí nabídku vrátit zpět. Souběžné zápisy kanálů jsou serializované; při závodu s jiným pushem se zápis zkusí znovu bez force push.
+Starý vývojový běh nesmí aktualizovat nabídku, pokud `develop` již obsahuje novější změny zdrojů. Opakovaný starší release ani starší dev sestavení nesmí nabídku vrátit zpět. Souběžné zápisy kanálů jsou serializované; při závodu s jiným pushem se zápis zkusí znovu bez force push.
 
 Soubory `home-assistant/ids_jmk/config.json` a `home-assistant/ids_jmk_dev/config.json` jsou distribuční výstupy, nikoli zdrojové nastavení. Dev manifest, překlad a changelog se vytvoří až po prvním úspěšném sestavení. Testy a CI používají zdrojovou šablonu `manifest.json`, takže mohou ověřit budoucí nastavení před jeho nabídnutím uživatelům. Obě varianty používají stejný runtime bez dalších balíčků; odlišují se manifestem a verzí obrazu.
 

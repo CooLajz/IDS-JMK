@@ -29,6 +29,10 @@ Parser stahuje společná zdrojová data a API z nich obsluhuje všechny klienty
 
 API funguje samostatně. Jeden datový svazek patří jedné instanci API s jedním procesem Uvicornu. Nový GTFS se importuje odděleně a teprve po úspěchu nahradí původní databázi. Časy, kalendář provozních dnů a čerstvost realtime mají význam pro správnost klienta: [podrobnosti API](api.md).
 
+## Větve Gitu
+
+Pro vývoj používejte `develop` s upstreamem `origin/develop`. Automatika publikuje otestované zdroje a manifesty aplikací do `main`; do pracovní větve nezapisuje. Push z Codexu proto není blokovaný následným automatickým commitem. HA a HACS nadále používají stejný repozitář a `main`. Podrobnosti uvádí [postup vydávání](releases.md#pracovní-a-distribuční-větev).
+
 ## Místní spuštění pro vývoj
 
 Požadavky: Python 3.13, [uv](https://docs.astral.sh/uv/) a Node.js 22.12+.

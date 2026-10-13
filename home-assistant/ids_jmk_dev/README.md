@@ -1,6 +1,6 @@
 # IDS JMK Parser (Dev)
 
-Vývojová varianta parseru pro HA OS na ARM64 a AMD64. Dostává aktualizace po úspěšném sestavení změn z větve `main`. Pro běžný provoz zvolte vydanou variantu **IDS JMK Parser**.
+Vývojová varianta parseru pro HA OS na ARM64 a AMD64. Dostává aktualizace po úspěšném sestavení změn z větve `develop`. Pro běžný provoz zvolte vydanou variantu **IDS JMK Parser**.
 
 Obě varianty používají stejný úsporný obraz; každá má vlastní nastavení, data, identitu serveru a adresu API. Integraci připojte k adrese z protokolu zvolené aplikace.
 

@@ -5,7 +5,7 @@ Ve stejném repozitáři jsou dvě samostatné aplikace:
 | Aplikace | Aktualizace |
 | --- | --- |
 | **IDS JMK Parser** | Nové číselné vydání po úspěšném sestavení releasu |
-| **IDS JMK Parser (Dev)** | Nové sestavení po úspěšných kontrolách a publikování obrazů z větve `main` |
+| **IDS JMK Parser (Dev)** | Nové sestavení po úspěšných kontrolách a publikování obrazů z větve `develop` |
 
 Dev používá vlastní verze, například `0.1.5-dev42001`. Číslo určuje konkrétní sestavení a jeho pokus. Každá verze má odpovídající Docker tag; již nainstalovaná aplikace se tím sama nezmění. HA nabídne aktualizaci při další obnově seznamu aplikací. V HA si můžete zapnout automatické aktualizace.
 

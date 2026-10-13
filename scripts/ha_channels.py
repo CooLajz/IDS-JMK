@@ -9,13 +9,13 @@ from pathlib import Path
 
 STABLE = Path("home-assistant/ids_jmk")
 DEV = Path("home-assistant/ids_jmk_dev")
-GENERATED = {
-    str(STABLE / "config.json"),
-    str(DEV / "config.json"),
-    str(DEV / "CHANGELOG.md"),
-    str(DEV / "translations/cs.json"),
-    str(DEV / "channel.json"),
-}
+DISTRIBUTION_ONLY = (
+    STABLE / "config.json",
+    DEV / "config.json",
+    DEV / "CHANGELOG.md",
+    DEV / "translations/cs.json",
+    DEV / "channel.json",
+)
 
 
 def git(*args, check=True):
@@ -46,7 +46,7 @@ def render(template, channel, version):
         config.update(
             name="IDS JMK Parser (Dev)",
             slug="ids_jmk_parser_dev",
-            description="Vývojové sestavení parseru IDS JMK z větve main.",
+            description="Vývojové sestavení parseru IDS JMK z větve develop.",
             stage="experimental",
             boot="manual",
         )
@@ -59,18 +59,11 @@ def source_file(source, path):
     return git("show", f"{source}:{path}").stdout
 
 
-def same_source(source, head):
-    if git("merge-base", "--is-ancestor", source, head, check=False).returncode:
-        return False
-    changed = set(git("diff", "--name-only", source, head).stdout.splitlines())
-    if not changed <= GENERATED:
-        return False
-    # Only our channel publication commits may have followed the source build.
-    commits = git("log", "--format=%an%x09%s", f"{source}..{head}").stdout.splitlines()
-    return all(line.startswith("github-actions[bot]\tUpdate Home Assistant ") for line in commits)
-
-
-def publish(channel, version, source):
+def publish(channel, version, source, source_branch="develop", target_branch="main"):
+    if source_branch == target_branch:
+        raise ValueError("Vývojová a distribuční větev musí být odlišné.")
+    for branch in (source_branch, target_branch):
+        git("check-ref-format", "--branch", branch)
     if not re.fullmatch(r"[0-9a-f]{40}", source):
         raise ValueError("Zdroj musí být plný SHA commitu.")
     template = json.loads(source_file(source, STABLE / "manifest.json"))
@@ -86,17 +79,20 @@ def publish(channel, version, source):
         files[DEV / "translations/cs.json"] = source_file(source, STABLE / "translations/cs.json")
         files[DEV / "channel.json"] = json.dumps({"version": version, "source": source}, indent=2) + "\n"
         files[DEV / "CHANGELOG.md"] = (
-            f"# {version}\n\nVývojové sestavení z větve `main`.\n\n"
+            f"# {version}\n\nVývojové sestavení z větve `develop`.\n\n"
             f"Zdroj: [commit {source[:7]}](https://github.com/CooLajz/IDS-JMK/commit/{source}).\n\n"
             "Sestavení prošlo kontrolami API, webu, integrace a kontejnerů na AMD64 a ARM64.\n"
         )
     for _ in range(3):
-        git("fetch", "origin", "+refs/heads/main:refs/remotes/origin/main")
-        head = git("rev-parse", "origin/main").stdout.strip()
-        if channel == "dev" and not same_source(source, head):
-            print("Nabídka dev se nemění: větev main již obsahuje novější změny.")
+        git("fetch", "origin", f"+refs/heads/{source_branch}:refs/remotes/origin/{source_branch}")
+        head = git("rev-parse", f"origin/{source_branch}").stdout.strip()
+        if channel == "dev" and source != head:
+            print(f"Nabídka dev se nemění: větev {source_branch} již obsahuje novější změny.")
             return False
-        git("checkout", "-B", "main", "origin/main")
+        exists = bool(git("ls-remote", "--heads", "origin", target_branch).stdout.strip())
+        if exists:
+            git("fetch", "origin", f"+refs/heads/{target_branch}:refs/remotes/origin/{target_branch}")
+        git("checkout", "-B", target_branch, f"origin/{target_branch}" if exists else source)
         path = folder / "config.json"
         if path.exists():
             previous = json.loads(path.read_text())["version"]
@@ -111,6 +107,19 @@ def publish(channel, version, source):
                 if parts(previous) > parts(version):
                     print("Nabídka dev se nemění: již je publikováno novější sestavení.")
                     return False
+        # Copy tested files, retaining channel metadata and workflow definitions.
+        # GITHUB_TOKEN cannot freely edit workflows; source-branch runs use their own definitions.
+        git(
+            "restore",
+            "--source",
+            source,
+            "--staged",
+            "--worktree",
+            "--",
+            ".",
+            ":(exclude).github/workflows",
+            *(f":(exclude){path}" for path in DISTRIBUTION_ONLY),
+        )
         for path, content in files.items():
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content)
@@ -119,10 +128,10 @@ def publish(channel, version, source):
             print("Nabídka HA již odpovídá sestavení.")
             return False
         git("commit", "-m", f"Update Home Assistant {channel} manifest to {version} [skip ci]")
-        if git("push", "origin", "HEAD:main", check=False).returncode == 0:
+        if git("push", "origin", f"HEAD:{target_branch}", check=False).returncode == 0:
             print(f"Nabídka HA aktualizována: {channel} {version}.")
             return True
-    raise RuntimeError("Nabídku HA nelze publikovat. Ověřte oprávnění workflow a pravidla větve main.")
+    raise RuntimeError("Nabídku HA nelze publikovat. Ověřte oprávnění workflow a pravidla distribuční větve.")
 
 
 def main():
@@ -139,6 +148,8 @@ def main():
     update.add_argument("--channel", choices=("stable", "dev"), required=True)
     update.add_argument("--version", required=True)
     update.add_argument("--source", required=True)
+    update.add_argument("--source-branch", default="develop")
+    update.add_argument("--target-branch", default="main")
     args = parser.parse_args()
     if args.command == "dev-version":
         base = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
@@ -147,7 +158,7 @@ def main():
         config = render(json.loads((STABLE / "manifest.json").read_text()), args.channel, args.version)
         args.output.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n")
     else:
-        publish(args.channel, args.version, args.source)
+        publish(args.channel, args.version, args.source, args.source_branch, args.target_branch)
 
 
 if __name__ == "__main__":

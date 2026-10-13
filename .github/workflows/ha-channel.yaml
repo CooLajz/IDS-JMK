@@ -35,4 +35,4 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          python scripts/ha_channels.py publish --channel "$HA_CHANNEL" --version "$HA_VERSION" --source "$HA_SOURCE"
+          python scripts/ha_channels.py publish --channel "$HA_CHANNEL" --version "$HA_VERSION" --source "$HA_SOURCE" --source-branch develop --target-branch main

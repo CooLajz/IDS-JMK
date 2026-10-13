@@ -8,7 +8,7 @@ První vydání aplikace je **0.1.4**. HA stáhne předem sestavený obraz `ghcr
 
 ## Stabilní a vývojová varianta
 
-**IDS JMK Parser** nabízí číselná vydání po úspěšném sestavení releasu. **IDS JMK Parser (Dev)** nabízí samostatně instalovatelné vývojové sestavení po úspěšných kontrolách a publikování změn z větve `main`. Obě aplikace najdete ve stejném repozitáři; Dev se poprvé objeví až po prvním úspěšném sestavení s podporou kanálů.
+**IDS JMK Parser** nabízí číselná vydání po úspěšném sestavení releasu. **IDS JMK Parser (Dev)** nabízí samostatně instalovatelné vývojové sestavení po úspěšných kontrolách a publikování změn z větve `develop`. Obě aplikace najdete ve stejném repozitáři; Dev se poprvé objeví až po prvním úspěšném sestavení s podporou kanálů.
 
 HA kontroluje aktualizace při obnově seznamu aplikací. V nastavení aplikace si můžete zapnout automatické aktualizace. Samotný push do Gitu nemění právě běžící kontejner.
 

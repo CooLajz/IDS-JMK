@@ -35,6 +35,8 @@ def repository(tmp_path, monkeypatch):
     run("git", "add", ".", cwd=work)
     run("git", "commit", "-m", "Source build", cwd=work)
     run("git", "push", "-u", "origin", "main", cwd=work)
+    run("git", "checkout", "-b", "develop", cwd=work)
+    run("git", "push", "-u", "origin", "develop", cwd=work)
     source = run("git", "rev-parse", "HEAD", cwd=work)
     run("git", "config", "user.name", "github-actions[bot]", cwd=work)
     monkeypatch.chdir(work)
@@ -56,9 +58,11 @@ def test_dev_and_stable_publish_without_changing_each_other(repository):
     assert json.loads((work / channels.DEV / "config.json").read_text()) == dev
     # A rerun may follow our own generated metadata commits.
     assert channels.publish("dev", "0.1.5-dev42002", source)
+    assert json.loads((work / channels.STABLE / "config.json").read_text())["version"] == "0.1.5"
     assert not channels.publish("dev", "0.1.5-dev42001", source)
     assert not channels.publish("dev", "0.1.5-dev42002", source)
     assert run("git", "rev-parse", "HEAD") == run("git", "ls-remote", "origin", "main").split()[0]
+    assert run("git", "ls-remote", "origin", "develop").split()[0] == source
 
 
 def test_new_user_push_prevents_old_dev_publication(repository):
@@ -67,7 +71,7 @@ def test_new_user_push_prevents_old_dev_publication(repository):
     (work / "README.md").write_text("Newer source")
     run("git", "add", "README.md")
     run("git", "commit", "-m", "New source push")
-    run("git", "push", "origin", "main")
+    run("git", "push", "origin", "develop")
     assert not channels.publish("dev", "0.1.5-dev42001", source)
     assert not (work / channels.DEV / "config.json").exists()
 
@@ -75,11 +79,11 @@ def test_new_user_push_prevents_old_dev_publication(repository):
 def test_old_stable_release_does_not_replace_newer_release(repository):
     work, source = repository
     assert channels.publish("stable", "0.1.5", source)
+    run("git", "checkout", "--detach", source)
     (work / "pyproject.toml").write_text('[project]\nversion="0.1.4"\n')
     run("git", "add", "pyproject.toml")
     run("git", "commit", "-m", "Old release source")
     old_source = run("git", "rev-parse", "HEAD")
-    run("git", "push", "origin", "main")
     assert not channels.publish("stable", "0.1.4", old_source)
     assert json.loads((work / channels.STABLE / "config.json").read_text())["version"] == "0.1.5"
 
@@ -101,6 +105,36 @@ def test_retry_when_a_publication_push_races(repository, monkeypatch):
     assert channels.publish("dev", "0.1.5-dev42001", source)
     assert pushes == 2
     assert json.loads((work / channels.DEV / "channel.json").read_text())["source"] == source
+
+
+def test_multiple_builds_publish_source_without_touching_development_branch(repository):
+    work, source = repository
+    assert channels.publish("dev", "0.1.5-dev42001", source)
+    assert run("git", "ls-remote", "origin", "develop").split()[0] == source
+    run("git", "checkout", "develop")
+    run("git", "config", "user.name", "Test author")
+    (work / "README.md").write_text("Next tested source")
+    workflow = work / ".github/workflows/check.yaml"
+    workflow.parent.mkdir(parents=True)
+    workflow.write_text("Source-branch workflow")
+    run("git", "add", "README.md", ".github/workflows/check.yaml")
+    run("git", "commit", "-m", "Next feature")
+    next_source = run("git", "rev-parse", "HEAD")
+    run("git", "push", "origin", "develop")
+    run("git", "config", "user.name", "github-actions[bot]")
+    assert channels.publish("dev", "0.1.5-dev43001", next_source)
+    assert (work / "README.md").read_text() == "Next tested source"
+    assert not workflow.exists()
+    assert run("git", "show", "develop:.github/workflows/check.yaml") == "Source-branch workflow"
+    assert run("git", "ls-remote", "origin", "develop").split()[0] == next_source
+    assert run("git", "rev-parse", "develop") == next_source
+    assert json.loads((work / channels.DEV / "config.json").read_text())["version"] == "0.1.5-dev43001"
+
+
+def test_publisher_refuses_to_write_to_the_development_branch(repository):
+    _, source = repository
+    with pytest.raises(ValueError, match="odlišné"):
+        channels.publish("dev", "0.1.5-dev42001", source, source_branch="main", target_branch="main")
 
 
 def test_unique_versions_and_invalid_inputs():
