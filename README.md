@@ -1,125 +1,67 @@
 # IDS JMK
 
-<img src="https://raw.githubusercontent.com/CooLajz/IDS-JMK/main/custom_components/ids_jmk/brand/logo.png" alt="IDS JMK API server" width="180" height="180">
+<img src="custom_components/ids_jmk/brand/logo.png" alt="IDS JMK API server" width="120" height="120">
 
-Vlastní server pro jízdní řády a realtime data IDS JMK. Poskytuje JSON API pro odjezdové displeje, weby a Home Assistant. Volitelný web nabízí vyhledávání zastávek, odjezdovou tabuli a detail spoje s polohou vozidla.
+**Odjezdy, upozornění a mapa vozidel IDS JMK ve Vašem Home Assistantu.** Vlastní API server zpracovává jízdní řády a volitelná realtime data. Stejná data můžete zobrazit i ve webovém prohlížeči nebo použít ve vlastním displeji či aplikaci.
 
-**Verze 0.1.5.** Instalační Compose soubory pro Portainer a ZIP integrace Home Assistantu jsou součástí [vydání na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API, webu a parseru pro HA se vydávají samostatně pro Linux AMD64 a ARM64.
+## Obsah
 
-## Součásti
+- [Pro uživatele Home Assistantu](#pro-uživatele-home-assistantu)
+- [Pro vývojáře](#pro-vývojáře)
+- [Jak spolu součásti fungují](#jak-spolu-součásti-fungují)
+- [Zdroje a podmínky dat](#zdroje-a-podmínky-dat)
 
-| Součást | Funkce |
+## Pro uživatele Home Assistantu
+
+Pro běžné použití nepotřebujete programovat ani psát YAML. Nastavíte zdroj dat, vyberete zastávku a přidáte kartu přes vizuální editor dashboardu.
+
+![Moderní a kompaktní odjezdy, upozornění a mapa ve skutečných kartách projektu s ukázkovými daty](docs/screenshots/ha-dashboard.png)
+
+*Skutečný kód HA karet v samostatném náhledu, nikoli snímek celé instalace Home Assistantu. Časy, spoje, polohy a omezení jsou ilustrační. [Původ obrázků](docs/screenshots/README.md).*
+
+| Chcete… | Pokračujte zde |
 | --- | --- |
-| API | Import GTFS do SQLite, automatické aktualizace, vyhledávání zastávek a stanovišť, odjezdy a vlastní odhady zpoždění, polohy vozidel, OpenAPI |
-| Web | Vyhledávání bez diakritiky, filtr směru/linky/stanoviště, AJAX obnova a průběžný odpočet, poslední minulý odjezd, sdílitelná URL, detail spoje, značka a mapa čerstvé polohy, konfigurace pro HA |
-| Home Assistant | Vlastní integrace s průvodcem: adresa serveru → vyhledání zastávky → stanoviště, linka a směr. Jeden senzor se seznamem odjezdů; vlastní karta dashboardu s vizuálním editorem |
+| Začít od nuly | [Průvodce instalací pro uživatele](docs/home-assistant.md#než-začnete) |
+| Zobrazit odjezdy své zastávky | [Přidání integrace a tabule](docs/home-assistant.md#přidání-serveru-a-první-tabule) |
+| Vybrat vzhled a pochopit údaje | [Odjezdová karta](docs/home-assistant.md#vlastní-karta-ids-jmk) |
+| Vidět výluky a omezení | [Karta upozornění](docs/home-assistant.md#karta-upozornění-z-více-tabulí) |
+| Sledovat vozidla na mapě | [Mapová karta](docs/home-assistant.md#mapa-vozidel) |
+| Vyřešit prázdnou kartu nebo chybu | [Časté potíže](docs/home-assistant.md#časté-potíže) |
 
-API a web mají **samostatné Docker obrazy**. Web nic nestahuje z GTFS a nemá vlastní databázi. API funguje zcela bez webu. Komponenta Home Assistantu komunikuje pouze s API.
+**[Otevřít celý návod pro Home Assistant →](docs/home-assistant.md)**
 
-## Místní spuštění pro vývoj
+Parser můžete provozovat jako aplikaci přímo v **HA OS** nebo na vlastním Docker serveru. Aplikace HA OS je zatím experimentální; její instalace na skutečném HA OS není potvrzena. Integraci a karty přidáte samostatně přes vlastní repozitář HACS nebo ručně. Podrobně Vás provede uživatelský návod.
 
-Požadavky: Python 3.13, [uv](https://docs.astral.sh/uv/) a Node.js 22.12+.
+## Pro vývojáře
 
-```sh
-uv sync --frozen
-uv run uvicorn api.main:app --host 127.0.0.1 --port 8000
-```
+API vrací JSON pro odjezdové tabule, polohy, upozornění a statistiky. Web i integrace HA používají stejné API. Web je volitelný a má samostatný Docker obraz.
 
-V druhém terminálu:
+| Téma | Dokumentace |
+| --- | --- |
+| Architektura, lokální spuštění a testy | [Vývojářský průvodce](docs/development.md) |
+| Endpointy, časy, odhady a datové kontrakty | [Reference API](docs/api.md) |
+| Docker, Portainer, reverse proxy a proměnné | [Instalace a provoz serveru](docs/deployment.md) |
+| Vydávání a distribuční balíčky | [Vydávání verzí](docs/releases.md) |
+| Ukázková data a obnova screenshotů | [Obrázky dokumentace](docs/screenshots/README.md) |
 
-```sh
-cd web
-npm ci
-npm run dev
-```
+![Webová odjezdová tabule s filtry a přístupem k API](docs/screenshots/web-departures.png)
 
-Web: [http://127.0.0.1:5173](http://127.0.0.1:5173). API dokumentace: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+*Skutečný web s ukázkovými odpověďmi API. Filtry určují odjezdy; tlačítko **API URL / JSON** vytvoří adresu pro vlastní aplikaci. Web není nutný pro provoz HA karet.*
 
-První start automaticky stáhne jízdní řády a vytvoří databázi v `data/`. Během importu API vrací stav 503 s vysvětlením; web počká a připojí se automaticky.
+**[Otevřít vývojářský průvodce →](docs/development.md)**
 
-## Parser přímo v Home Assistant OS
+Aktuální verze v repozitáři je **0.1.5**. Balíčky integrace a instalační Compose soubory najdete ve [vydáních na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API, webu a parseru pro HA se sestavují pro Linux AMD64 a ARM64.
 
-Ve stejném repozitáři je připravena aplikace **IDS JMK Parser** pro ARM64 (64bitové Raspberry Pi) a AMD64 (například virtuál). Obsahuje pouze parser/API a nastavení přes HA. Integrace a odjezdová karta se nadále instalují samostatně přes HACS nebo ručně.
+## Jak spolu součásti fungují
 
-Aplikace je dostupná od verze **0.1.4** a do ověření skutečné instalace v HA OS je označena jako experimentální. Přidejte tento repozitář do obchodu s aplikacemi HA a nainstalujte **IDS JMK Parser**. Instalační postup, nastavení a zálohování popisuje [dokumentace aplikace](home-assistant/ids_jmk/DOCS.md). Stávající Docker instalace zůstává dostupná.
-
-## Docker a Portainer
-
-Projekt lze sestavit ze zdrojů lokálně:
-
-```sh
-docker compose -f compose.web.yaml -f compose.build.yaml up -d --build
-```
-
-Pro instalaci vydané verze použijte v Portaineru **Stacks → Add stack → Web editor**:
-
-- [compose.yaml](compose.yaml) pro samotné API;
-- [compose.web.yaml](compose.web.yaml) pro API a web;
-- [compose.proxy.yaml](compose.proxy.yaml) pro API a web pouze za existující Docker reverse proxy, bez publikovaných portů.
-
-V prostředí Stacku nastavte `BIND_IP` na konkrétní interní IP Docker serveru, dále `API_PORT` a případně `WEB_PORT`. Výchozí vazba `127.0.0.1` zpřístupní porty jen na samotném serveru. Pro přístup z LAN je nutné `BIND_IP` změnit. Na webovém portu je dostupné také API přes proxy, takže ho může použít i Home Assistant.
-
-Příklad proměnných je v [.env.example](.env.example). Datový svazek `ids-data` uchovává jízdní řády a identitu serveru. Nemažte jej při aktualizaci. Nasazujte pouze jednu instanci API nad jedním svazkem a jeden proces Uvicornu; plánovač i realtime snapshot žijí v této instanci.
-
-Služba v této verzi nemá vlastní přihlášení. Pro provoz mimo důvěryhodnou síť ji umístěte za odpovídajícím zabezpečením reverzní proxy. Prohlížeč používá API stejného původu, takže není potřeba povolovat plošné CORS.
-
-### Použití interní sítě reverse proxy
-
-V Portaineru použijte `compose.proxy.yaml` a nastavte `PROXY_NETWORK` na existující Docker síť, ke které je připojená vaše proxy (výchozí `proxy`). V proxy nastavte upstream **HTTP**, host **`ids-jmk-web`**, port **`8080`**. Doménu a HTTPS certifikát spravuje reverse proxy.
-
-Tento Stack nepublikuje žádné porty API ani webu na hostitele. Do společné sítě je připojen pouze web; API je dostupné přes jeho `/api/v1/` proxy. Web, API i `/docs` tedy používají jednu doménu. Případný vnější nestandardní HTTPS port generátor URL automaticky zachová. Pro více samostatných instalací v jedné proxy síti zvolte unikátní síťový alias webu.
-
-Pro lokální sestavení tohoto režimu:
-
-```sh
-docker compose -f compose.proxy.yaml -f compose.build.yaml up -d --build
-```
-
-### Vývojové verze z hlavní větve
-
-Po každém pushi do větve `main` workflow **Kontroly** spustí testy a po jejich úspěchu publikuje tři vývojové obrazy pro Linux AMD64 a ARM64:
-
-- `ghcr.io/coolajz/ids-jmk-api:dev`
-- `ghcr.io/coolajz/ids-jmk-web:dev`
-- `ghcr.io/coolajz/ids-jmk-ha:dev` (parser pro HA OS)
-
-Tag `dev` označuje poslední publikovanou vývojovou verzi. Každý obraz dostane také tag `dev-<celý SHA commitu>` pro nasazení konkrétní revize. Nový push ruší starší probíhající běh kontrol pro stejnou větev; při rychlém sledu pushů se tedy publikuje nejnovější úspěšně dokončený běh. Publikování vývojových obrazů nemění stabilní tag `latest` ani vydané verze. Pull requesty a ostatní větve se pouze testují.
-
-Pro testování za reverse proxy ponechte v Portaineru repozitář, větev `refs/heads/main` a cestu `compose.proxy.yaml`. V **Environment variables** nastavte `IMAGE_TAG=dev`. Poté:
-
-1. Vyčkejte, až na GitHubu úspěšně skončí celý workflow **Kontroly**, včetně publikování API i webu.
-2. V Portaineru použijte **Pull and redeploy** a zapněte **Re-pull image** (podle verze **Re-pull image and redeploy**), aby se stáhl nový obsah tagu `dev`.
-3. Po aktualizaci ověřte, že oba kontejnery hlásí stav `healthy`.
-
-Obrazy se publikují samostatně. Pokud některé publikování selže nebo je běh přerušen, nenasazujte jej; vyčkejte na úspěšné dokončení všech obrazů. Pro návrat ke konkrétnímu úspěšnému běhu nastavte `IMAGE_TAG=dev-<celý SHA commitu>`, případně pro návrat ke stabilní verzi použijte její číselný tag. Datový svazek při aktualizaci zachovejte.
-
-Samotná kontrola změn Gitu v Portaineru nezaručuje nasazení nového obrazu: může proběhnout ještě před dokončením sestavení a později už nenajít nový commit. Automatizace nasazení proto musí navazovat až na úspěšné publikování obou obrazů. Tento workflow automatizuje publikování, nikoli aktualizaci běžícího serveru. Podrobnosti k ruční aktualizaci popisuje [dokumentace Portaineru](https://docs.portainer.io/user/docker/stacks/edit).
-
-### Nastavení API
-
-| Proměnná | Výchozí hodnota | Význam |
+| Součást | Co dělá | Kdy ji potřebujete |
 | --- | --- | --- |
-| `DATA_DIR` | `data` (v obrazu `/data`) | Persistentní data |
-| `GTFS_URL` | Přímá adresa KORDIS níže | Zdroj jízdních řádů |
-| `REALTIME_ENABLED` | `false` | `true` zapne stahování realtime, odhady, polohy a upozornění |
-| `REALTIME_URL` | Přímá adresa KORDIS níže | Zdroj realtime |
-| `GTFS_INTERVAL_SECONDS` | `86400` | Kontrola jízdních řádů každých 24 hodin, minimum 3600 s |
-| `REALTIME_INTERVAL_SECONDS` | `60` | Kontrola realtime každých 60 sekund, minimum 15 s |
-| `REALTIME_MAX_AGE_SECONDS` | `180` | Maximální stáří použitelných realtime zpráv |
-| `DOWNLOAD_ENABLED` | `true` | `false` vypne stahování pro izolované testy |
+| Parser / API server | Stahuje a zpracovává data KORDIS, poskytuje odjezdy a další údaje | Vždy; stačí jeden společný zdroj pro více klientů |
+| Integrace Home Assistantu | Propojuje HA s API, vytváří tabule a diagnostické senzory | Pro použití vlastních HA karet |
+| Dashboardové karty | Zobrazují odjezdy, upozornění a mapu vybraných linek | Přidejte si požadované karty do dashboardu |
+| Web | Vyhledává zastávky, zobrazuje tabuli a detail spoje, sestavuje API URL | Volitelně, i bez Home Assistantu |
 
-Intervaly můžete změnit v Portaineru v části **Environment variables** daného Stacku pomocí `GTFS_INTERVAL_SECONDS` a `REALTIME_INTERVAL_SECONDS` (hodnoty v sekundách). Pokud proměnné neuvedete, použije se 86400 a 60 sekund. Po změně znovu nasaďte Stack. Při startu se jízdní řád a případně zapnutý realtime načtou ihned; interval určuje prodlevu mezi dokončením obnovy a dalším stažením. Po neúspěšném stažení GTFS se pokus opakuje za 60 sekund. Obnova webové tabule a HA integrace z API zůstává každých 30 sekund.
-
-Realtime je **výchozí vypnutý**. Pro jeho použití nastavte v `.env` nebo v Portaineru `REALTIME_ENABLED=true` a znovu nasaďte Stack. Nastavení platí pro všechny přiložené Compose varianty. Hodnota `false` nebo neuvedená proměnná znamená provoz pouze podle jízdního řádu: realtime se nestahuje, odjezdy neobsahují odhady, zpoždění, polohy ani upozornění. Web nabídne mapu zastávek spoje bez vozidel. Statické GTFS se nadále obnovuje podle `GTFS_INTERVAL_SECONDS`.
-
-Stejný obsah GTFS se znovu neimportuje. Nový archiv se zkontroluje a importuje do oddělené databáze, která pak atomicky nahradí původní. Při chybě zůstává poslední funkční jízdní řád. Realtime snapshot se pravidelně nahrazuje, nepersistuje se přes restart.
-
-## API a Home Assistant
-
-- [Popis API a odhadů](docs/api.md)
-- [Instalace integrace a odjezdová tabule v HA](docs/home-assistant.md)
-- [Postup vydávání](docs/releases.md)
-- Interaktivní dokumentace `/docs` a strojový popis `/openapi.json`
+**Realtime je ve výchozím nastavení vypnutý.** Plánované odjezdy fungují i bez něj. Pro zpoždění, vozidla a upozornění zapněte realtime v parseru. Chybějící odhad neznamená nulové zpoždění; mapa zobrazuje jen dostupné čerstvé polohy. [Jak číst údaje](docs/home-assistant.md#jak-číst-odjezdy).
 
 ## Zdroje a podmínky dat
 
@@ -132,22 +74,6 @@ KORDIS na [oficiální stránce otevřených dat](https://www.idsjmk.cz/a/kontak
 
 Týdenní obnova zmíněná na [portálu Brna](https://data.brno.cz/datasets/379d2e9a7907460c8ca7fda1f3e84328/about) se týká jeho kopie ke stažení; není intervalem aktualizace přímých zdrojů KORDIS používaných aplikací.
 
-Mapový podklad používá OpenStreetMap, načítá se pouze při otevření detailu s dostupnou polohou. Pro větší veřejné instalace zvolte vlastní vhodný mapový server v souladu s [podmínkami OSM dlaždic](https://operations.osmfoundation.org/policies/tiles/).
+Mapový podklad používá OpenStreetMap a načítá se při zobrazení mapy v prohlížeči. Pro větší veřejné instalace zvolte vlastní vhodný mapový server v souladu s [podmínkami OSM dlaždic](https://operations.osmfoundation.org/policies/tiles/).
 
 Projekt je nezávislý a není oficiální aplikací KORDIS JMK. Vlastní kód je dostupný pod [licencí MIT](LICENSE). Licence kódu nemění licenci dopravních dat ani knihoven třetích stran.
-
-## Ověření
-
-```sh
-uv run pytest -q
-uv run ruff check api custom_components tests
-cd web
-npm ci
-npm run build
-```
-
-Testy používají malé syntetické GTFS archivy, nikoli síťové služby. Pokrývají import, zachování staré databáze, kalendáře a výjimky, časy po půlnoci, změny času, odhady a stáří realtime i odpovědi API.
-
-GitHub Actions ověřují Python testy, web, hassfest, oba Docker obrazy, první import, webovou proxy a zachování identity po restartu. Publikování obrazů je podmíněné úspěchem těchto kontrol. Samostatná testovací instalace byla ověřena za HTTPS reverse proxy; konfigurace a senzor integrace byly ověřeny v izolovaném Home Assistantu 2025.12.5. Vlastní karta byla ověřena i v dashboardu tohoto HA, v grafickém editoru a ve světlém i tmavém motivu na mobilní šířce. Konkrétní prostředí a fyzický displej si ověřte ve své instalaci.
-
-Piktogramy dopravy a vybavení pocházejí z [Material Design Icons od Pictogrammers](https://pictogrammers.com/library/mdi/). Web obsahuje původní SVG cesty z balíčku `@mdi/js` 7.4.47, HA využívá vestavěnou sadu MDI. Licenční oznámení webu je přiloženo v `web/public/THIRD-PARTY-NOTICES.txt`.

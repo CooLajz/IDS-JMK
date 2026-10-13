@@ -1,5 +1,19 @@
 # API v1
 
+[← Rozcestník](../README.md) · [Vývojářský průvodce](development.md) · [Návod HA](home-assistant.md)
+
+## Obsah
+
+- [Původ časů](#původ-časů)
+- [Minulý odjezd a mapa](#minulý-odjezd-a-mapa)
+- [Vybavení plánovaného spoje](#vybavení-plánovaného-spoje)
+- [Generování odkazu na webu](#generování-odkazu-na-webu)
+- [Zastávka hlášená vozidlem](#zastávka-hlášená-vozidlem)
+- [Druh dopravy](#druh-dopravy)
+- [Volitelný realtime](#volitelný-realtime)
+- [Upozornění a výluky](#upozornění-a-výluky)
+- [Veřejné statistiky provozu](#veřejné-statistiky-provozu)
+
 Časy jsou ISO 8601 s offsetem pásma Europe/Prague. Identifikátory jsou řetězce; nikdy je nepřevádějte na čísla. Chyby mají HTTP stav a JSON `detail`. Při prvním importu vrací datové endpointy 503, ne prázdný jízdní řád.
 
 | GET | Výsledek |

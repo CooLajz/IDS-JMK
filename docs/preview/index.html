@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="cs">
+  <meta charset="utf-8" />
+  <link rel="icon" href="data:," /><title>IDS JMK — ukázky HA karet</title>
+  <style>
+    :root {
+      font-family: Roboto, Arial, sans-serif;
+      color: #172b3a;
+      background: #f2f5f8;
+      --primary-text-color: #172b3a;
+      --secondary-text-color: #617282;
+      --primary-color: #1675bd;
+      --divider-color: #dde3e9;
+      --card-background-color: #fff;
+      --ha-card-background: #fff;
+      --warning-color: #a46600;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 32px;
+    }
+    main {
+      max-width: 1120px;
+      margin: auto;
+    }
+    h1 {
+      font-size: 28px;
+      margin: 8px 0;
+    }
+    p {
+      color: var(--secondary-text-color);
+      line-height: 1.5;
+    }
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: #1675bd;
+      font-weight: bold;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    h2 {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--secondary-text-color);
+      margin: 24px 0 12px;
+    }
+    body.dark {
+      background: #111820;
+      --primary-text-color: #e6edf3;
+      --secondary-text-color: #a2b1be;
+      --card-background-color: #1d2833;
+      --ha-card-background: #1d2833;
+      --divider-color: #3b4854;
+      color: #e6edf3;
+    }
+    #map {
+      margin-top: 24px;
+    }
+    footer {
+      font-size: 12px;
+      color: var(--secondary-text-color);
+      margin-top: 20px;
+    }
+    @media (max-width: 650px) {
+      body {
+        padding: 16px;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      h1 {
+        font-size: 23px;
+      }
+    }
+  </style>
+  <main>
+    <div class="eyebrow">IDS JMK / HOME ASSISTANT</div>
+    <h1>Vaše odjezdy na jednom místě</h1>
+    <p>
+      Skutečné karty projektu · ukázková data · samostatný náhled mimo Home
+      Assistant
+    </p>
+    <div class="grid">
+      <section>
+        <h2>Moderní odjezdová tabule</h2>
+        <div id="modern"></div>
+      </section>
+      <section>
+        <h2>Kompaktní odjezdová tabule</h2>
+        <div id="compact"></div>
+        <h2>Upozornění na vybraných linkách</h2>
+        <div id="alerts"></div>
+      </section>
+    </div>
+    <div id="map"></div>
+    <footer>
+      Ilustrační časy, spoje, polohy a upozornění; nejde o aktuální dopravní
+      informace.
+    </footer>
+  </main>
+  <script type="module" src="preview.js"></script>
+</html>
