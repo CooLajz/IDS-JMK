@@ -29,6 +29,7 @@ class DeparturesSensor(CoordinatorEntity, SensorEntity):
 
     def __init__(self, coordinator, entry, subentry):
         super().__init__(coordinator)
+        self.subentry = subentry
         self._attr_unique_id = f"{subentry.unique_id}_departures"
         self._attr_name = f"IDS JMK {subentry.title}"
         self._attr_device_info = DeviceInfo(
@@ -36,6 +37,14 @@ class DeparturesSensor(CoordinatorEntity, SensorEntity):
             manufacturer="IDS JMK", model="Odjezdová tabule",
             via_device=(DOMAIN, entry.data["instance_id"]),
         )
+
+    @property
+    def available(self):
+        return self.coordinator.last_update_success and self.coordinator.data is not None
+
+    async def async_update(self):
+        if self.enabled:
+            await self.coordinator.async_manual_refresh()
 
     @property
     def native_value(self):
@@ -48,9 +57,17 @@ class DeparturesSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         data = self.coordinator.data
+        metadata = {
+            "stop_id": self.subentry.data["stop_id"],
+            "stop_name": self.subentry.data.get("stop_name", self.subentry.title),
+            "refresh_mode": "continuous" if self.coordinator.continuous else "visible",
+            "refresh_active": self.coordinator.active,
+            "refresh_pending": self.coordinator.waking,
+        }
         if data is None:
-            return {}
+            return {**metadata, "departures": []}
         return {
+            **metadata,
             "departures": data["departures"],
             "realtime_enabled": data.get("realtime_enabled", True),
             "alerts": data.get("alerts", []),

@@ -8,8 +8,9 @@ globalThis.HTMLElement = class {
 };
 globalThis.customElements = { get: (name) => elements.get(name), define: (name, value) => elements.set(name, value) };
 globalThis.window = {};
+const helper = await readFile(new URL('../custom_components/ids_jmk/www/board-visibility.js', import.meta.url));
 const source = await readFile(new URL('../custom_components/ids_jmk/www/ids-jmk-departures-card.js', import.meta.url));
-const { departureView, isUpcoming, transportIcon, departureDay } = await import(`data:text/javascript;base64,${source.toString('base64')}`);
+const { departureView, isUpcoming, transportIcon, departureDay } = await import(`data:text/javascript;base64,${Buffer.from(source.toString().replace('./board-visibility.js', `data:text/javascript;base64,${helper.toString('base64')}`)).toString('base64')}`);
 const now = Date.parse('2026-10-11T18:00:00+02:00');
 const row = { scheduled_departure: '2026-10-11T18:03:00+02:00', departure_time: '2026-10-11T18:05:00+02:00', delay_seconds: 120 };
 

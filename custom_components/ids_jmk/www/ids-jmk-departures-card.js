@@ -1,3 +1,4 @@
+import { BoardVisibility } from "./board-visibility.js";
 /* IDS JMK dashboard card. No external dependencies or direct API requests. */
 const TYPE = "ids-jmk-departures-card";
 const DEFAULTS = { show_header: true, show_footer: true, limit: 10, layout: "modern", highlight_minutes: 5, show_platform: true, show_accessibility: true, show_transport_icon: true, show_line_number: true, show_departure_day: true };
@@ -155,7 +156,7 @@ const styles = `
 `;
 
 class IDSJMKDeparturesCard extends HTMLElement {
-  constructor() { super(); this.attachShadow({ mode: "open" }); }
+  constructor() { super(); this.attachShadow({ mode: "open" }); this.visibility = new BoardVisibility(this, () => [this.config?.entity]); }
   setConfig(config) {
     if (!config.entity || typeof config.entity !== "string") throw new Error("Vyberte senzor odjezdové tabule IDS JMK.");
     if (config.limit !== undefined && (!Number.isInteger(config.limit) || config.limit < 1 || config.limit > 50)) {
@@ -168,10 +169,12 @@ class IDSJMKDeparturesCard extends HTMLElement {
       throw new Error("Hranice zvýraznění musí být celé číslo od 0 do 60 minut.");
     }
     this.config = { ...DEFAULTS, ...config };
+    this.visibility.update();
     this.render();
   }
-  set hass(hass) { this.states = hass.states; this.render(); }
+  set hass(hass) { this.states = hass.states; this.visibility.setHass(hass); this.render(); }
   connectedCallback() {
+    this.visibility.connect();
     // New HA frontends use context; the hass setter also supports older versions.
     const request = new CustomEvent("context-request", { bubbles: true, composed: true });
     request.context = "states";
@@ -182,7 +185,7 @@ class IDSJMKDeparturesCard extends HTMLElement {
     this.timer = setInterval(() => this.render(), 15000);
     this.render();
   }
-  disconnectedCallback() { clearInterval(this.timer); this.unsubscribe?.(); this.unsubscribe = undefined; }
+  disconnectedCallback() { this.visibility.disconnect(); clearInterval(this.timer); this.unsubscribe?.(); this.unsubscribe = undefined; }
   getCardSize() { return (this.config?.show_header === false ? 0 : 1.3) + (this.config?.show_footer === false ? 0 : 0.7) + (this.config?.limit ?? 10) * (this.config?.layout === "compact" ? 0.8 : 1.4); }
   getGridOptions() { return { columns: 12, min_columns: 12 }; }
   static getConfigElement() { return document.createElement(`${TYPE}-editor`); }
@@ -214,7 +217,11 @@ class IDSJMKDeparturesCard extends HTMLElement {
     const delayColumn = showDelay ? "with-delay" : "";
     const stale = old || (realtimeEnabled && attributes.realtime_stale !== false);
     let body;
-    if (unavailable || invalid) {
+    if (this.visibility.error) {
+      body = '<div class="message" role="status">Odběr tabule se nepodařilo obnovit. Zkontrolujte připojení a aktualizaci integrace.</div>';
+    } else if (attributes.refresh_pending || attributes.refresh_active === false) {
+      body = '<div class="message" role="status">Čeká se na obnovení tabule při zobrazení.</div>';
+    } else if (unavailable || invalid) {
       body = `<div class="message" role="status">${!state ? "Vyberte dostupný senzor IDS JMK v nastavení karty." : invalid ? "Vybraný senzor neobsahuje odjezdovou tabuli." : "Data nejsou dostupná. Zkontrolujte připojení integrace k serveru."}</div>`;
     } else if (!rows.length) {
       body = '<div class="message" role="status">Pro zvolené filtry nejsou dostupné žádné odjezdy.</div>';

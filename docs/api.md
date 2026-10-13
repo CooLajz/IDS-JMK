@@ -130,9 +130,9 @@ Parametr podporuje také `POST /api/v1/map/vehicles?realtime=false` (výběr lin
 
 S `realtime=false` se odjezdy **počítají i řadí jen podle jízdního řádu**, včetně odpočtu a minulých odjezdů. Nejde pouze o skrytí sloupce zpoždění. Ignoruje se i již naplněná realtime cache, která zůstává zachována pro ostatní klienty.
 
-Při povoleném realtime server standardně čeká na první požadavek, který tato data potřebuje. Po **300 sekundách bez takového požadavku** přestane realtime stahovat. Požadavky s `realtime=false`, healthchecky, statistiky, stav serveru a statické seznamy stahování neprobouzejí ani neprodlužují. Prázdný výběr mapy a detail spoje mimo jeho provozní den také neprodlužují aktivitu. Statické GTFS se obnovuje nezávisle.
+Při povoleném realtime server standardně čeká na první požadavek, který tato data potřebuje. Po **300 sekundách bez takového požadavku** přestane realtime stahovat. Požadavky s `realtime=false`, healthchecky, statistiky, stav serveru a statické seznamy stahování neprobouzejí ani neprodlužují. Prázdný či neexistující výběr mapy, neexistující filtr spoje a detail spoje mimo časové okno (30 minut před začátkem až dvě hodiny po konci) také neprodlužují aktivitu. Statické GTFS se obnovuje nezávisle.
 
-Relevantní požadavek obnoví aktivitu a při splatné aktualizaci čeká nejvýše tři sekundy na společné stažení. Poté dostane dostupná data s dosavadním označením stáří; probíhající stažení pokračuje. Souběžní klienti sdílejí jediný downloader. Mezi pokusy platí `REALTIME_INTERVAL_SECONDS`; při chybách se prodleva zdvojnásobuje až na 15 minut (nebo nastavený interval, je-li delší). Nový dotaz tuto prodlevu neobchází a úspěch obnoví běžný interval.
+Relevantní požadavek obnoví aktivitu. Pokud nejsou k dispozici čerstvá data a aktualizace je splatná nebo právě probíhá, čeká nejvýše tři sekundy na společné stažení. S čerstvou cache odpoví ihned a případnou aktualizaci provede na pozadí. Poté dostane dostupná data s dosavadním označením stáří; probíhající stažení pokračuje. Souběžní klienti sdílejí jediný downloader. Mezi pokusy platí `REALTIME_INTERVAL_SECONDS`; při chybách se prodleva zdvojnásobuje až na 15 minut (nebo nastavený interval, je-li delší). Nový dotaz ani restart tuto prodlevu neobchází a úspěch obnoví běžný interval. U HTTP 429/503 se respektuje také `Retry-After` (sekundy nebo HTTP datum), a to i pokud požaduje delší čekání.
 
 Dobu neaktivity nastavuje `REALTIME_IDLE_TIMEOUT_SECONDS` (výchozí `300`); `0` ponechá nepřetržité stahování. Po vypnutí posledního realtime klienta může doběhnout již zahájené stažení a zbývající okno aktivity. Ve `/status` obsahuje `realtime` při povolení také `download_state` (`idle`, `active`, `refreshing`, `disabled`), `idle_timeout_seconds` a `last_requested_at`. Stav `disabled` zde znamená zakázané stahování. Zastaralá cache při uspání není sama o sobě chybou stahování.
 
@@ -180,7 +180,7 @@ Metriky stahování:
 
 Pro `api` se počítají dokončené požadavky na `/api/`, chyby 4xx/5xx a počty odpovědí `responses_2xx` až `responses_5xx`. Aktuální dotaz na statistiky se objeví až v následující odpovědi. Healthchecky, dokumentace a statické soubory se nepočítají. Naše webové rozhraní posílá hlavičku `X-IDS-JMK-Client: web`, která jeho požadavky z čítačů vynechá. Jde o konvenci pro rozlišení klientů, nikoli ověření jejich identity; externí klient může stejnou hlavičku také poslat. Běžné požadavky HA, Živého obrazu a ostatních klientů bez této hlavičky se počítají.
 
-Statistiky a HTTP validátory se ukládají do `statistics.sqlite3` v `DATA_DIR`, tedy do stejného persistentního svazku jako jízdní řády. Zachovejte celý svazek při restartu nebo aktualizaci. Statistiky se ukládají jako hodinové součty, bez jednotlivých přístupových záznamů. Veřejný endpoint funguje i před prvním importem GTFS a při vypnutém realtime. Přehled `sources` je také v `/api/v1/status` pod klíčem `downloads`.
+Statistiky a HTTP validátory se ukládají do `statistics.sqlite3` v `DATA_DIR`, tedy do stejného persistentního svazku jako jízdní řády. Zachovejte celý svazek při restartu nebo aktualizaci. Statistiky se ukládají jako hodinové součty, bez jednotlivých přístupových záznamů. Veřejný endpoint funguje i před prvním importem GTFS a při vypnutém realtime. Přehled `sources` je také v `/api/v1/status` pod klíčem `downloads`. Obsahuje `consecutive_errors` a `next_check_at` (ISO 8601), nejbližší přípustný další pokus; u uspaného realtime tento čas sám o sobě stahování nespouští.
 
 ### Podmíněné stahování
 
@@ -210,3 +210,5 @@ se do Recorderu.
   `route_id`, `line` a `direction`. Obsahuje zastávky všech variant linky
   ve vybraných směrech, nezávisle na realtime a aktuálně jedoucích vozidlech.
   HA tuto operaci předává akcí `stops` v příkazu `ids_jmk/map`.
+
+Čekací doba po úspěchu i chybě se ukládá se zdrojem. Restart s platnou cache neprovádí předčasnou kontrolu. U statického GTFS se opakování při chybách prodlužuje z 60 sekund postupně až na jednu hodinu; `Retry-After` může čekání dále prodloužit. Chybějící cache obchází pouze běžný interval po úspěchu, nikoli čekání po chybě zdroje.

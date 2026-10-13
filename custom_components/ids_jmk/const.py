@@ -1,2 +1,2 @@
 DOMAIN = "ids_jmk"
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "switch"]

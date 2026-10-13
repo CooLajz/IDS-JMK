@@ -7,8 +7,10 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from .board_visibility import register_visibility
 from .client import APIError, Client
 from .const import DOMAIN, PLATFORMS
+from .coordinator import BoardCoordinator
 from .frontend import async_register_card
 from .vehicle_map import register_map
 
@@ -19,6 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_setup(hass, config):
     await async_register_card(hass)
     register_map(hass)
+    register_visibility(hass)
     return True
 
 
@@ -44,24 +47,44 @@ async def async_setup_entry(hass, entry):
         if subentry.subentry_type != "board":
             continue
 
-        async def fetch_board(board=subentry):
-            return await client.departures(board.data["stop_id"], board.data)
-
-        board_coordinator = coordinator(subentry.title, fetch_board, 30)
-        await board_coordinator.async_refresh()
+        board_coordinator = BoardCoordinator(hass, entry, subentry, client)
+        if board_coordinator.continuous:
+            await board_coordinator.async_refresh()
         boards[subentry.subentry_id] = board_coordinator
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {"statistics": statistics, "boards": boards}
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        "statistics": statistics, "boards": boards,
+        "source_settings": dict(entry.data),
+        "board_settings": {key: dict(board.subentry.data) for key, board in boards.items()},
+    }
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
 async def async_reload_entry(hass, entry):
+    runtime = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    settings = {key: dict(s.data) for key, s in entry.subentries.items() if s.subentry_type == "board"}
+    def without_mode(data):
+        return {k: v for k, v in data.items() if k != "continuous_updates"}
+    if (
+        runtime and runtime["source_settings"] == dict(entry.data)
+        and settings != runtime["board_settings"]
+        and settings.keys() == runtime["board_settings"].keys()
+        and all(without_mode(data) == without_mode(runtime["board_settings"][key])
+                for key, data in settings.items())
+    ):
+        for key, data in settings.items():
+            runtime["boards"][key].set_continuous(data.get("continuous_updates", False))
+        runtime["board_settings"] = settings
+        return
     await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass, entry):
     if await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id, None)
+        runtime = hass.data[DOMAIN].pop(entry.entry_id, None)
+        if runtime:
+            for coordinator in [runtime["statistics"], *runtime["boards"].values()]:
+                await coordinator.async_shutdown()
         return True
     return False

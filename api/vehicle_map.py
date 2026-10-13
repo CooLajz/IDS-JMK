@@ -59,6 +59,7 @@ def map_vehicles(timetable, realtime, selections, enabled, now=None):
     if not enabled or result["stale"] or not selections:
         return result
     selected = {(s.route_id, s.direction) for s in selections}
+    seen = set()
     with timetable.connect() as db:
         services = {}
         for trip_id, start_date in realtime.snapshot.vehicles:
@@ -96,6 +97,7 @@ def map_vehicles(timetable, realtime, selections, enabled, now=None):
                         "service_date": day.isoformat(),
                         "transport_mode": transport_mode(trip["type"]),
                     }
-                    if not any(v["id"] == item["id"] for v in result["vehicles"]):
+                    if item["id"] not in seen:
+                        seen.add(item["id"])
                         result["vehicles"].append(item)
     return result

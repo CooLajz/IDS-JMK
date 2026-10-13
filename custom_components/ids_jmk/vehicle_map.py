@@ -59,7 +59,8 @@ async def request(hass, connection, msg):
                 connection.send_error(msg["id"], "invalid_format", "Chybí spoj nebo provozní den.")
                 return
             result = await client.get(
-                f"trips/{quote(msg['trip_id'], safe='')}", {"service_date": msg["service_date"]}
+                f"trips/{quote(msg['trip_id'], safe='')}",
+                {"service_date": msg["service_date"], "realtime": "false"},
             )
         connection.send_result(msg["id"], result)
     except APIError:

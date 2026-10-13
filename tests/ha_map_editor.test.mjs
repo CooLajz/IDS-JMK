@@ -53,3 +53,34 @@ test('failed catalogue requests do not retry on each HA state update',async()=>{
   await flush();assert.equal(calls.length,1);assert.ok(editor.error);
   editor.hass={...hass,connection:{}};await flush();assert.equal(calls.length,2);
 });
+
+test('map pauses offscreen and in a hidden document, resumes once, and removes listeners', async()=>{
+  globalThis.document=new EventTarget();document.hidden=false;
+  let observer;
+  globalThis.IntersectionObserver=class {
+    constructor(callback){this.callback=callback;observer=this;}
+    observe(){} disconnect(){this.disconnected=true;}
+  };
+  const oldSet=globalThis.setInterval,oldClear=globalThis.clearInterval;
+  let active=false;
+  globalThis.setInterval=()=>{active=true;return 1;};
+  globalThis.clearInterval=()=>{active=false;};
+  try {
+    const Card=elements.get('ids-jmk-map-card'),card=new Card();
+    card.isConnected=true;card.config={entry_id:'demo',refresh_interval:30,selections:[{route_id:'R',direction:'*'}]};
+    card.init=()=>{};card.map={remove(){}};card.status={};card.detail={};
+    card.markers={clearLayers(){}};card.permanentStops={getLayers:()=>[]};
+    card.loadStops=()=>{};
+    let calls=0;card.call=async()=>{calls++;return{vehicles:[],realtime_enabled:true};};
+    card.connectedCallback();assert.equal(active,true);
+    observer.callback([{isIntersecting:false}]);assert.equal(active,false);
+    await card.refresh();assert.equal(calls,0);
+    observer.callback([{isIntersecting:true}]);await flush();assert.equal(active,true);assert.equal(calls,1);
+    document.hidden=true;document.dispatchEvent(new Event('visibilitychange'));
+    assert.equal(active,false);await card.refresh();assert.equal(calls,1);
+    document.hidden=false;document.dispatchEvent(new Event('visibilitychange'));
+    await flush();assert.equal(calls,2);
+    card.disconnectedCallback();assert.equal(active,false);assert.equal(observer.disconnected,true);
+    document.dispatchEvent(new Event('visibilitychange'));assert.equal(active,false);
+  } finally {globalThis.setInterval=oldSet;globalThis.clearInterval=oldClear;}
+});

@@ -33,6 +33,7 @@ def create_app(settings=None):
         enabled=settings.download_enabled and settings.realtime_enabled,
         interval=settings.realtime_interval,
         idle_timeout=settings.realtime_idle_timeout,
+        cooldown=lambda: downloader.remaining("realtime", settings.realtime_url, rt_identity),
     )
     state = {"importing": False, "gtfs_last_checked": None, "gtfs_error": None, "realtime_error": None}
     id_file = timetable.directory / "instance-id"
@@ -58,7 +59,12 @@ def create_app(settings=None):
                 rt_identity = digest
         except Exception:
             LOG.warning("Uložený realtime nelze obnovit; bude stažen znovu")
-    state["gtfs_last_checked"] = statistics.source_state("gtfs").get("last_checked_at")
+    gtfs_state = statistics.source_state("gtfs")
+    if gtfs_state.get("url_key") == source_key(settings.gtfs_url):
+        state.update(gtfs_last_checked=gtfs_state.get("last_checked_at"),
+                     gtfs_error=gtfs_state.get("last_error"))
+    if settings.realtime_enabled and rt_state.get("url_key") == source_key(settings.realtime_url):
+        state["realtime_error"] = rt_state.get("last_error")
 
     async def accept_static(target):
         state["importing"] = True
@@ -70,17 +76,23 @@ def create_app(settings=None):
 
     async def accept_realtime(target):
         nonlocal rt_identity
-        data = target.read_bytes()
-        candidate = Realtime(settings.realtime_max_age)
-        candidate.snapshot = realtime.snapshot
-        candidate.ingest(data)
+        def parse():
+            data = target.read_bytes()
+            candidate = realtime.frozen()
+            candidate.ingest(data)
+            return candidate.snapshot, hashlib.sha256(data).hexdigest()
+
+        snapshot, identity = await asyncio.to_thread(parse)
         target.replace(rt_cache)
-        realtime.snapshot = candidate.snapshot
-        rt_identity = hashlib.sha256(data).hexdigest()
+        realtime.snapshot = snapshot
+        rt_identity = identity
         return rt_identity
 
     async def static_loop(client):
         while True:
+            delay = downloader.remaining("gtfs", settings.gtfs_url, timetable.metadata().get("sha256"))
+            if delay > 0:
+                await asyncio.sleep(delay)
             try:
                 await downloader.update(
                     client,
@@ -90,12 +102,16 @@ def create_app(settings=None):
                     100 * 1024 * 1024,
                     lambda: timetable.metadata().get("sha256"),
                     accept_static,
+                    interval=settings.gtfs_interval,
                 )
                 state.update(gtfs_last_checked=iso(time.time()), gtfs_error=None)
             except Exception as exc:
                 state["gtfs_error"] = type(exc).__name__
                 LOG.warning("Import GTFS selhal: %s", type(exc).__name__)
-            await asyncio.sleep(settings.gtfs_interval if not state["gtfs_error"] else 60)
+            # The persistent source deadline also survives application restarts.
+            await asyncio.sleep(max(1, downloader.remaining(
+                "gtfs", settings.gtfs_url, timetable.metadata().get("sha256")
+            )))
 
     async def realtime_loop(client):
         async def update():
@@ -108,6 +124,7 @@ def create_app(settings=None):
                     20 * 1024 * 1024,
                     lambda: rt_identity,
                     accept_realtime,
+                    interval=settings.realtime_interval,
                 )
                 state["realtime_error"] = None
                 return True
@@ -252,13 +269,15 @@ def create_app(settings=None):
         use_realtime = settings.realtime_enabled and include_realtime
         if use_realtime:
             # Reject an unknown stop before extending the download activity window.
-            await asyncio.to_thread(timetable.detail, stop_id)
-            await demand.request()
+            await asyncio.to_thread(timetable.validate_stop, stop_id)
+            await demand.request(wait=not realtime.fresh(realtime.snapshot.timestamp, time.time()))
+        view = realtime.frozen() if use_realtime else schedule_only
+        now = datetime.now(TZ)
         result = await asyncio.to_thread(
             timetable.departures,
             stop_id,
-            realtime if use_realtime else schedule_only,
-            datetime.now(TZ),
+            view,
+            now,
             limit,
             horizon,
             line,
@@ -268,9 +287,9 @@ def create_app(settings=None):
         result["realtime_enabled"] = use_realtime
         if use_realtime:
             result.update(await asyncio.to_thread(
-                timetable.board_alerts, stop_id, realtime, datetime.now(TZ), line, direction
+                timetable.board_alerts, stop_id, view, now, line, direction
             ))
-            result["realtime_stale"] = not realtime.fresh(realtime.snapshot.timestamp, time.time())
+            result["realtime_stale"] = not view.fresh(view.snapshot.timestamp, now.timestamp())
         else:
             for row in result["departures"] + result["previous_departures"]:
                 for key in (
@@ -299,10 +318,11 @@ def create_app(settings=None):
         use_realtime = settings.realtime_enabled and include_realtime
         result["realtime_enabled"] = use_realtime
         if use_realtime:
-            if result["active"]:
-                await demand.request()
+            if result["active"] and realtime.in_trip_window(result["stops"], day, time.time()):
+                await demand.request(wait=not realtime.fresh(realtime.snapshot.timestamp, time.time()))
             result["vehicles"] = (
-                realtime.trip_vehicles(trip_id, result["stops"], day, time.time()) if result["active"] else []
+                realtime.frozen().trip_vehicles(trip_id, result["stops"], day, time.time())
+                if result["active"] else []
             )
         return result
 
@@ -326,10 +346,15 @@ def create_app(settings=None):
         if len(selections) > 20:
             raise HTTPException(422, "Vyberte nejvýše 20 linek.")
         use_realtime = settings.realtime_enabled and include_realtime
-        if use_realtime and selections:
-            await demand.request()
+        valid_selection = (
+            await asyncio.to_thread(timetable.has_map_selection, selections)
+            if use_realtime and selections else False
+        )
+        if use_realtime and valid_selection:
+            await demand.request(wait=not realtime.fresh(realtime.snapshot.timestamp, time.time()))
         return await asyncio.to_thread(
-            map_vehicles, timetable, realtime if use_realtime else schedule_only, selections, use_realtime
+            map_vehicles, timetable, realtime.frozen() if use_realtime else schedule_only,
+            selections, use_realtime
         )
 
     @app.get("/api/v1/vehicles")
@@ -339,13 +364,17 @@ def create_app(settings=None):
         ready()
         if not (settings.realtime_enabled and include_realtime):
             return {"realtime_enabled": False, "vehicles": []}
-        await demand.request()
+        if trip_id and not await asyncio.to_thread(timetable.has_trip, trip_id):
+            return {"vehicles": []}
+        await demand.request(wait=not realtime.fresh(realtime.snapshot.timestamp, time.time()))
+
+        view = realtime.frozen()
 
         def result():
-            ids = {key[0] for key in realtime.snapshot.vehicles if not trip_id or key[0] == trip_id}
+            ids = {key[0] for key in view.snapshot.vehicles if not trip_id or key[0] == trip_id}
             with timetable.connect() as db:
                 positions = {key: timetable.trip_stops(db, key) for key in ids}
-            return {"vehicles": realtime.vehicle_list(trip_id, stops_by_trip=positions)}
+            return {"vehicles": view.vehicle_list(trip_id, stops_by_trip=positions)}
 
         return await asyncio.to_thread(result)
 

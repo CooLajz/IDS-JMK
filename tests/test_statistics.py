@@ -311,6 +311,15 @@ def test_both_real_http_sources_return_304_after_application_restart(tmp_path):
                     assert snapshot["totals"][source]["errors"] == 0
             if count == 1:
                 first = snapshot["sources"]
+                # A restart before the persisted deadlines must not contact either source.
+                with TestClient(create_app(settings)) as client:
+                    client.get('/api/v1/vehicles')
+                    time.sleep(0.05)
+                    assert len(requests) == 2
+                # Model the next scheduled refresh being due, then exercise 304 handling.
+                for source in ('gtfs', 'realtime'):
+                    state = app.state.statistics.source_state(source)
+                    app.state.statistics.record(source, state={**state, 'next_check_at': 0})
             else:
                 assert all(
                     snapshot["sources"][s]["last_downloaded_at"] == first[s]["last_downloaded_at"]
@@ -347,3 +356,57 @@ def test_cumulative_endpoint_survives_restart_and_calendar_boundaries(tmp_path):
             assert 'series' not in result
             after = app.state.statistics.cumulative()
             assert after['lifetime']['api']['requests'] == result['lifetime']['api']['requests'] + 1
+
+
+@pytest.mark.parametrize('value,expected', [
+    ('120', 120), ('Mon, 12 Oct 2026 06:02:00 GMT', 120),
+    ('Sun, 11 Oct 2026 06:00:00 GMT', 0), ('garbage', 0), ('-1', 0),
+    ('', 0), (None, 0), ('1000000000000000', 0),
+])
+def test_retry_after_supports_seconds_and_http_dates(value, expected):
+    from api.downloads import retry_after
+
+    assert retry_after(value, datetime.fromisoformat('2026-10-12T06:00:00+00:00').timestamp()) == expected
+
+
+@pytest.mark.parametrize('source,expected', [('gtfs', [60, 120, 240]), ('realtime', [120, 240, 480])])
+def test_source_cooldowns_persist_and_recover(tmp_path, monkeypatch, source, expected):
+    now = [1_800_000_000]
+    monkeypatch.setattr('api.downloads.time.time', lambda: now[0])
+    stats = Statistics(tmp_path)
+    response = [503, {}]
+
+    async def accept(path):
+        return 'valid'
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(
+            response[0], headers=response[1], stream=httpx.ByteStream(b'feed'), request=r,
+        ))) as client:
+            for delay in expected:
+                dl = SourceDownloader(stats)
+                with pytest.raises(httpx.HTTPStatusError):
+                    await dl.update(
+                        client, source, URL, tmp_path / 'd', 100, lambda: None, accept, interval=60,
+                    )
+                restarted = SourceDownloader(Statistics(tmp_path))
+                assert restarted.remaining(source, URL, None) == delay
+                assert restarted.remaining(source, URL + '/other', None) == 0
+                now[0] += delay
+                assert restarted.remaining(source, URL, None) == 0
+            response[:] = [429, {'Retry-After': '7200'}]
+            with pytest.raises(httpx.HTTPStatusError):
+                await SourceDownloader(stats).update(
+                    client, source, URL, tmp_path / 'd', 100, lambda: None, accept, interval=60,
+                )
+            assert SourceDownloader(stats).remaining(source, URL, None) == 7200
+            now[0] += 7200
+            response[:] = [200, {}]
+            await SourceDownloader(stats).update(
+                client, source, URL, tmp_path / 'd', 100, lambda: None, accept, interval=60,
+            )
+            dl = SourceDownloader(stats)
+            assert dl.remaining(source, URL, 'valid') == 60
+            assert dl.remaining(source, URL, None) == 0
+            assert stats.source_state(source)['consecutive_errors'] == 0
+    asyncio.run(run())

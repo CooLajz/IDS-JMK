@@ -135,21 +135,35 @@ class MapCard extends HTMLElement {
     return { columns: 12, min_columns: 6, rows: 8 };
   }
   connectedCallback() {
+    this.visible = true;
+    this.visibilityObserver = new IntersectionObserver(([entry]) => {
+      this.visible = entry.isIntersecting;
+      this.startTimer();
+      if (this.visible && !document.hidden) this.refresh();
+    });
+    this.visibilityObserver.observe(this);
+    this.onVisibility = () => {
+      this.startTimer();
+      if (!document.hidden) this.refresh();
+    };
+    document.addEventListener("visibilitychange", this.onVisibility);
     this.init();
     this.startTimer();
   }
   startTimer() {
     clearInterval(this.timer);
-    if (this.isConnected && this.config)
+    if (this.isConnected && this.config && this.visible !== false && !document.hidden)
       this.timer = setInterval(
         () => this.refresh(),
         this.config.refresh_interval * 1000,
       );
   }
   disconnectedCallback() {
+    document.removeEventListener("visibilitychange", this.onVisibility);
     clearInterval(this.timer);
     this.generation++;
     this.observer?.disconnect();
+    this.visibilityObserver?.disconnect();
     this.map?.remove();
     this.map = null;
     this.stopsLoaded = false;
@@ -300,7 +314,7 @@ class MapCard extends HTMLElement {
     }
   }
   async refresh() {
-    if (!this.map || !this.isConnected) return;
+    if (!this.map || !this.isConnected || this.visible === false || document.hidden) return;
     this.shadowRoot.querySelector("h2").textContent =
       this.config.title || "Mapa vehyklů";
     if (!this.config.entry_id || !this.config.selections.length) {

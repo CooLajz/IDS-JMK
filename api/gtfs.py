@@ -198,6 +198,11 @@ class Timetable:
                 }
                 if not all(counts.values()):
                     raise ValueError("Prázdný jízdní řád")
+                if db.execute(
+                    "SELECT 1 FROM stops WHERE lat IS NULL OR lon IS NULL "
+                    "OR lat NOT BETWEEN -90 AND 90 OR lon NOT BETWEEN -180 AND 180 LIMIT 1"
+                ).fetchone():
+                    raise ValueError("Neplatné souřadnice zastávky v GTFS")
                 for sql in (
                     "SELECT 1 FROM times t LEFT JOIN stops s ON s.id=t.stop_id WHERE s.id IS NULL LIMIT 1",
                     "SELECT 1 FROM times s LEFT JOIN trips t ON t.id=s.trip_id WHERE t.id IS NULL LIMIT 1",
@@ -252,6 +257,21 @@ class Timetable:
                     (folded(query), folded(query), limit),
                 )
             ]
+
+    def has_trip(self, trip_id):
+        with self.connect() as db:
+            return db.execute("SELECT 1 FROM trips WHERE id=?", (trip_id,)).fetchone() is not None
+
+    def has_map_selection(self, selections):
+        with self.connect() as db:
+            return any(db.execute(
+                "SELECT 1 FROM trips WHERE route_id=? AND (?='*' OR direction=?) LIMIT 1",
+                (s.route_id, s.direction, s.direction),
+            ).fetchone() is not None for s in selections)
+
+    def validate_stop(self, stop_id):
+        with self.connect() as db:
+            self.stop(db, stop_id)
 
     def detail(self, stop_id):
         with self.connect() as db:

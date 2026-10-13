@@ -9,7 +9,10 @@ import time
 
 
 class RealtimeDemand:
-    def __init__(self, *, enabled, interval, idle_timeout, wait_timeout=3, clock=time.monotonic):
+    def __init__(
+        self, *, enabled, interval, idle_timeout, wait_timeout=3, clock=time.monotonic, cooldown=lambda: 0,
+    ):
+        self.cooldown = cooldown
         self.clock = clock
         self.enabled = enabled
         self.interval = interval
@@ -38,12 +41,14 @@ class RealtimeDemand:
             return "refreshing"
         return "active" if self.active else "idle"
 
-    async def request(self):
+    async def request(self, *, wait=True):
         if not self.enabled:
             return
         self.last_demand = self.clock()
         self.last_requested_at = time.time()
-        wait = self.refreshing or self.last_demand >= self.next_attempt
+        wait = wait and (self.refreshing or (
+            self.last_demand >= self.next_attempt and self.cooldown() <= 0
+        ))
         if wait:
             self.finished.clear()
         self.wake.set()
@@ -59,7 +64,7 @@ class RealtimeDemand:
             if not self.active:
                 await self.wake.wait()
                 continue
-            delay = self.next_attempt - self.clock()
+            delay = max(self.next_attempt - self.clock(), self.cooldown())
             if delay > 0:
                 if self.idle_timeout:
                     delay = min(delay, self.last_demand + self.idle_timeout - self.clock())

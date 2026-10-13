@@ -59,20 +59,27 @@ function notice(text, error = false) {
   $("notice").textContent = text;
   $("notice").classList.toggle("error", error);
 }
-async function api(path) {
-  const res = await fetch(`/api/v1/${path}`, {
-    signal: AbortSignal.timeout(15000),
-    headers: { "X-IDS-JMK-Client": "web" },
-  });
-  const data = await res.json();
-  if (!res.ok)
-    throw new Error(
-      typeof data.detail === "string"
-        ? data.detail
-        : "Požadavek se nepodařilo zpracovat.",
-    );
-  return data;
+const pendingRequests = new Map();
+function api(path) {
+  if (pendingRequests.has(path)) return pendingRequests.get(path);
+  const request = (async () => {
+    const res = await fetch(`/api/v1/${path}`, {
+      signal: AbortSignal.timeout(15000),
+      headers: { "X-IDS-JMK-Client": "web" },
+    });
+    const data = await res.json();
+    if (!res.ok)
+      throw new Error(
+        typeof data.detail === "string"
+          ? data.detail
+          : "Požadavek se nepodařilo zpracovat.",
+      );
+    return data;
+  })().finally(() => pendingRequests.delete(path));
+  pendingRequests.set(path, request);
+  return request;
 }
+
 function option(value, label) {
   const o = document.createElement("option");
   o.value = value;

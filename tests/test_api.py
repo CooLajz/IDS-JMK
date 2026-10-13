@@ -711,6 +711,8 @@ def test_schedule_only_requests_never_wake_downloader(tmp_path, monkeypatch, ser
 def test_realtime_endpoints_wake_one_shared_download(tmp_path, monkeypatch, path, payload):
     from unittest.mock import AsyncMock
 
+    monkeypatch.setattr('api.main.time.time', lambda: at('2026-10-11T14:00:00').timestamp())
+
     update = AsyncMock(return_value=True)
     monkeypatch.setattr('api.main.SourceDownloader.update', update)
     app = create_app(Settings(data_dir=tmp_path / 'app', realtime_enabled=True))
@@ -774,3 +776,140 @@ def test_opt_out_ignores_warm_cache_and_recomputes_departures(tmp_path, monkeypa
         assert mapped['vehicles'] == [] and mapped['updated_at'] is None
         # Opting out must not purge data used by another client.
         assert client.get('/api/v1/stops/P/departures').json()['departures'][0]['delay_seconds'] == 300
+
+
+def test_irrelevant_trip_and_map_queries_do_not_extend_downloads(tmp_path, monkeypatch):
+    from unittest.mock import AsyncMock
+
+    update = AsyncMock(return_value=True)
+    monkeypatch.setattr('api.main.SourceDownloader.update', update)
+    monkeypatch.setattr('api.main.time.time', lambda: at('2026-10-13T14:00:00').timestamp())
+    app = create_app(Settings(data_dir=tmp_path / 'app', realtime_enabled=True))
+    app.state.timetable.import_zip(archive(tmp_path / 'feed.zip'))
+    with TestClient(app) as client:
+        for path in ('/api/v1/vehicles?trip_id=missing',
+                     '/api/v1/trips/T?service_date=2026-10-11',
+                     '/api/v1/trips/T?service_date=2026-10-14'):
+            assert client.get(path).status_code == 200
+        for selection in ({'route_id': 'missing'}, {'route_id': 'R', 'direction': 'missing'}):
+            assert client.post('/api/v1/map/vehicles', json=[selection]).json()['vehicles'] == []
+        assert app.state.realtime_demand.last_demand is None
+        assert [call.args[1] for call in update.await_args_list] == ['gtfs']
+
+
+def test_board_uses_one_snapshot_if_feed_changes_during_response(tmp_path, monkeypatch):
+    import time
+
+    app = create_app(Settings(data_dir=tmp_path / 'app', realtime_enabled=True, download_enabled=False))
+    app.state.timetable.import_zip(archive(tmp_path / 'feed.zip'))
+    stamp = int(time.time())
+    app.state.realtime.snapshot = Snapshot(stamp, stamp)
+    original = app.state.timetable.departures
+
+    def replace_snapshot(*args, **kwargs):
+        result = original(*args, **kwargs)
+        app.state.realtime.snapshot = Snapshot()
+        return result
+
+    monkeypatch.setattr(app.state.timetable, 'departures', replace_snapshot)
+    with TestClient(app) as client:
+        data = client.get('/api/v1/stops/P/departures').json()
+        assert not data['realtime_stale'] and not data['alerts_stale']
+        assert data['alerts_updated_at'] is not None
+        assert app.state.realtime.snapshot.timestamp == 0
+
+
+@pytest.mark.parametrize('bearing', [float('nan'), float('inf'), -10, 361])
+def test_invalid_bearings_do_not_break_json_responses(bearing):
+    import json
+    import time
+
+    feed = pb.FeedMessage()
+    feed.header.gtfs_realtime_version = '2.0'
+    feed.header.timestamp = int(time.time())
+    entity = feed.entity.add()
+    entity.id = 'vehicle'
+    entity.vehicle.trip.trip_id = 'T'
+    entity.vehicle.position.latitude = 49
+    entity.vehicle.position.longitude = 16
+    entity.vehicle.position.bearing = bearing
+    realtime = Realtime()
+    realtime.ingest(feed.SerializeToString())
+    data = realtime.vehicle_list()
+    assert data[0]['bearing'] is None
+    json.dumps(data, allow_nan=False)
+
+
+@pytest.mark.parametrize('coordinate', ['nan', 'inf', '999'])
+def test_invalid_stop_coordinates_preserve_previous_schedule(timetable, tmp_path, coordinate):
+    old = timetable.metadata()['sha256']
+    path = archive(tmp_path / 'invalid.zip')
+    with zipfile.ZipFile(path) as z:
+        files = {name: z.read(name) for name in z.namelist()}
+    files['stops.txt'] = files['stops.txt'].replace(b',49,16,', f',{coordinate},16,'.encode())
+    with zipfile.ZipFile(path, 'w') as z:
+        for name, content in files.items():
+            z.writestr(name, content)
+    with pytest.raises(ValueError, match='souřadnice'):
+        timetable.import_zip(path)
+    assert timetable.metadata()['sha256'] == old
+
+
+def test_concurrent_http_clients_share_one_upstream_refresh(tmp_path, monkeypatch):
+    import asyncio
+    import time
+
+    import httpx
+
+    calls = []
+    app = create_app(Settings(data_dir=tmp_path / 'app', realtime_enabled=True))
+    app.state.timetable.import_zip(archive(tmp_path / 'feed.zip'))
+
+    async def update(self, client, source, *args, **kwargs):
+        calls.append(source)
+        if source == 'realtime':
+            await asyncio.sleep(0.02)
+            app.state.realtime.snapshot = Snapshot(int(time.time()), time.time())
+        return True
+
+    monkeypatch.setattr('api.main.SourceDownloader.update', update)
+
+    async def run():
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as c:
+                results = await asyncio.gather(*(
+                    c.get('/api/v1/vehicles' + ('?realtime=false' if i % 2 else '')) for i in range(40)
+                ))
+                assert all(r.status_code == 200 for r in results)
+                assert calls.count('realtime') == 1
+                assert calls.count('gtfs') == 1
+    asyncio.run(run())
+
+
+def test_restart_does_not_bypass_upstream_retry_after(tmp_path, monkeypatch):
+    import time
+    from unittest.mock import AsyncMock
+
+    from api.downloads import source_key
+    from api.statistics import Statistics
+
+    settings = Settings(data_dir=tmp_path / 'app', realtime_enabled=True)
+    settings.data_dir.mkdir()
+    stats = Statistics(settings.data_dir)
+    for name, url in (('gtfs', settings.gtfs_url), ('realtime', settings.realtime_url)):
+        stats.record(name, state={
+            'url_key': source_key(url), 'next_check_at': time.time() + 7200,
+            'last_error': 'HTTPStatusError', 'consecutive_errors': 1,
+        })
+    app = create_app(settings)
+    app.state.timetable.import_zip(archive(tmp_path / 'feed.zip'))
+    update = AsyncMock()
+    monkeypatch.setattr('api.main.SourceDownloader.update', update)
+    with TestClient(app) as client:
+        assert client.get('/api/v1/vehicles').status_code == 200
+        assert client.get('/api/v1/stops/P/departures').status_code == 200
+        status = client.get('/api/v1/status').json()
+        assert isinstance(status['downloads']['realtime']['next_check_at'], str)
+        assert status['downloads']['realtime']['consecutive_errors'] == 1
+        assert status['gtfs_error'] == status['realtime_error'] == 'HTTPStatusError'
+        update.assert_not_called()

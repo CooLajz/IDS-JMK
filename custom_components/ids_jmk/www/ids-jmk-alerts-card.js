@@ -1,3 +1,4 @@
+import { BoardVisibility } from "./board-visibility.js";
 /* Alerts from board sensor attributes; no independent API requests. */
 const TYPE = "ids-jmk-alerts-card";
 const escape = (value) => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
@@ -9,6 +10,7 @@ export function collectAlerts(states, entities, now = Date.now()) {
     const state = states?.[id], a = state?.attributes ?? {};
     const name = a.stop_name || a.friendly_name || id;
     const age = now - Date.parse(a.generated_at);
+    if (a.refresh_pending || a.refresh_active === false) { issues.push(`${name}: čeká se na obnovení při zobrazení`); continue; }
     if (!state || state.state === "unavailable") { issues.push(`${name}: senzor není dostupný`); continue; }
     if (a.realtime_enabled === false) { issues.push(`${name}: realtime je na serveru vypnutý`); continue; }
     if (a.alerts_supported === false || !Array.isArray(a.alerts)) { issues.push(`${name}: aktualizujte API a integraci pro podporu upozornění`); continue; }
@@ -46,20 +48,21 @@ const styles = `
   .issues ul { padding-left:18px; margin:5px 0 0; }
 `;
 class AlertsCard extends HTMLElement {
-  constructor() { super(); this.attachShadow({mode:"open"}); }
+  constructor() { super(); this.attachShadow({mode:"open"}); this.visibility = new BoardVisibility(this, () => (this.config?.entities || [])); }
   setConfig(config) {
     if (!Array.isArray(config.entities) || !config.entities.length || config.entities.some(id=>typeof id!=="string" || !id.startsWith("sensor."))) throw new Error("Vyberte alespoň jeden senzor odjezdové tabule IDS JMK.");
-    this.config = {...config, entities:[...new Set(config.entities)]}; this.render();
+    this.config = {...config, entities:[...new Set(config.entities)]}; this.visibility.update(); this.render();
   }
-  set hass(hass) { this.states = hass.states; this.render(); }
+  set hass(hass) { this.states = hass.states; this.visibility.setHass(hass); this.render(); }
   connectedCallback() {
+    this.visibility.connect();
     const request = new CustomEvent("context-request", {bubbles:true,composed:true});
     request.context="states"; request.subscribe=true;
     request.callback=(states,unsubscribe)=>{this.unsubscribe=unsubscribe;this.states=states;this.render();};
     this.dispatchEvent(request);
     clearInterval(this.timer); this.timer=setInterval(()=>this.render(),15000); this.render();
   }
-  disconnectedCallback() { clearInterval(this.timer); this.unsubscribe?.(); this.unsubscribe=undefined; }
+  disconnectedCallback() { this.visibility.disconnect(); clearInterval(this.timer); this.unsubscribe?.(); this.unsubscribe=undefined; }
   getCardSize() { return 3; }
   getGridOptions() { return {columns:12,min_columns:6}; }
   static getConfigElement() { return document.createElement(`${TYPE}-editor`); }
@@ -67,6 +70,7 @@ class AlertsCard extends HTMLElement {
   render() {
     if (!this.config) return;
     const {alerts,issues} = collectAlerts(this.states,this.config.entities);
+    if (this.visibility.error) issues.push("Odběr tabulí se nepodařilo obnovit. Zkontrolujte připojení a aktualizaci integrace.");
     const html = `<style>${styles}</style><ha-card><header><ha-icon icon="mdi:alert-outline" aria-hidden="true"></ha-icon><h2>${escape(this.config.title || "Upozornění IDS JMK")}</h2><span class="count">${alerts.length}</span></header>
       ${issues.length ? `<div class="issues" role="status">Některé zdroje nelze ověřit.<ul>${issues.map(s=>`<li>${escape(s)}</li>`).join("")}</ul></div>` : ""}
       ${alerts.length ? `<div class="items">${alerts.map(a=>{

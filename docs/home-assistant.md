@@ -219,7 +219,7 @@ směry. Filtry mapy jsou nezávislé na zastávce a odjezdech zdrojové tabule.
 Směry vycházejí z GTFS `direction_id`; názvy nabízejí nejčastější cíle a zahrnují
 i zkrácené spoje stejného směru. Výběr používá `route_id`, nikoli jen číslo linky.
 
-Interval obnovování nastavíte v editoru karty (5–3600 sekund, výchozí 30).
+Interval obnovování nastavíte v editoru karty (5–3600 sekund, výchozí 30). Skrytá záložka prohlížeče nebo karta mimo viditelnou oblast obnovování pozastaví; po návratu se data obnoví. Již zahájený požadavek může doběhnout. Detail trasy žádá jen statické zastávky a neaktivuje další realtime požadavek.
 Server nadále dodržuje vlastní interval stahování realtime. Zobrazuje pouze čerstvé použitelné polohy. Při chybě připojení,
 zastarání dat nebo vypnutém realtime značky zmizí a karta zobrazí vysvětlení.
 Kliknutím na vozidlo zobrazíte detail a zastávky celého spoje. Přerušovaná čára
@@ -301,3 +301,18 @@ Statistiky vyžadují aktualizované API s endpointem `/api/v1/statistics/cumula
 Parser a integrace jsou samostatné součásti. Aktualizujte obě, restartujte integraci prostřednictvím restartu HA a obnovte stránku dashboardu. V HACS aktualizujete integraci; v obchodě s aplikacemi HA aktualizujete parser. U Dockeru postupujte podle [provozního návodu](deployment.md).
 
 Před větší aktualizací vytvořte zálohu. V HA OS zahrňte i aplikaci Parser. U Dockeru zachovejte celý datový svazek `ids-data`, včetně identity serveru a statistik. Podrobnosti: [zálohy aplikace HA OS](../home-assistant/ids_jmk/DOCS.md#data-místo-a-zálohy).
+
+### Obnovování pouze při zobrazení
+
+Každé zařízení odjezdové tabule obsahuje konfigurační přepínač **Průběžné obnovování**:
+
+- **Vypnuto (výchozí):** odjezdy se obnovují pouze při zobrazení naší karty odjezdů nebo upozornění. Karta musí být ve viditelné části stránky a prohlížeč musí mít stránku v popředí.
+- **Zapnuto:** tabule se obnovuje průběžně každých 30 sekund. Tento režim zapněte pro automatizace, jiné karty nebo další spotřebitele senzoru.
+
+Nastavení se ukládá pro každou tabuli a zachová se po restartu. U tabulí bez uložené volby se používá režim pouze při zobrazení, tedy i po aktualizaci starší integrace. Při použití automatizací proto zapněte průběžné obnovování.
+
+Naše karty obnovují odběr každých 30 sekund. Více karet a prohlížečů sdílí jedno načítání tabule. Skrytí karty odběr uvolní; při náhlém zavření či ztrátě spojení odběr vyprší nejpozději za 90 sekund od posledního potvrzeného požadavku. Karta upozornění aktivuje vybrané tabule i bez karty odjezdů. Ostatní karty tento mechanismus automaticky nepodporují.
+
+Při uspání senzor uchovává poslední hodnotu, která se dále neaktualizuje. Atributy `refresh_mode`, `refresh_active` a `refresh_pending` rozlišují nastavený režim, aktivní odběr a probouzení. Před prvním načtením je senzor nedostupný; naše karta přesto umí zahájit odběr. Ruční akce `homeassistant.update_entity` provede jednorázové načtení i v úsporném režimu. Přepínač průběžného obnovování lze ovládat také automatizací.
+
+Volba **Používat realtime data** je nezávislá na obnovování: při vypnutí se načítá pouze jízdní řád. API server přestane stahovat realtime z KORDIS až po vypršení své lhůty neaktivity a pouze tehdy, pokud realtime nepotřebuje jiný klient nebo mapa. Diagnostické senzory se obnovují zvlášť a samy stahování z KORDIS neaktivují.

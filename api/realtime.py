@@ -29,6 +29,19 @@ class Realtime:
         self.max_age = max_age
         self.snapshot = Snapshot()
 
+    def frozen(self):
+        """Pin one published snapshot for the whole response, including worker threads."""
+        view = Realtime(self.max_age)
+        view.snapshot = self.snapshot
+        return view
+
+    @staticmethod
+    def in_trip_window(stops, day, now):
+        origin = service_epoch(day)
+        return bool(stops) and (
+            origin + stops[0]["departure"] - 1800 <= now <= origin + stops[-1]["arrival"] + 7200
+        )
+
     def ingest(self, data):
         feed = pb.FeedMessage()
         feed.ParseFromString(data)
@@ -65,7 +78,10 @@ class Realtime:
                     "sequence": v.current_stop_sequence if v.HasField("current_stop_sequence") else None,
                     "status": v.current_status,
                     "position": position,
-                    "bearing": v.position.bearing if v.position.HasField("bearing") else None,
+                    "bearing": v.position.bearing if (
+                        v.position.HasField("bearing") and math.isfinite(v.position.bearing)
+                        and 0 <= v.position.bearing <= 360
+                    ) else None,
                 }
                 if value["timestamp"] >= vehicles.get(key, {}).get("timestamp", 0):
                     vehicles[key] = value
@@ -82,9 +98,7 @@ class Realtime:
     def trip_vehicles(self, trip_id, stops, day, now):
         """Share service-instance bounds between board badges and trip maps."""
         origin = service_epoch(day)
-        if not stops or not (
-            origin + stops[0]["departure"] - 1800 <= now <= origin + stops[-1]["arrival"] + 7200
-        ):
+        if not self.in_trip_window(stops, day, now):
             return []
         vehicles = self.vehicle_list(trip_id, stops, day, now=now)
         for vehicle in vehicles:
@@ -145,7 +159,13 @@ class Realtime:
         snap = self.snapshot
         now = time.time() if now is None else now
         result = []
-        for v in snap.vehicles.values():
+        # Per-trip map requests otherwise scan the entire fleet once for each vehicle.
+        if trip_id and service_date:
+            keys = ((trip_id, service_date.strftime("%Y%m%d")), (trip_id, ""))
+            candidates = (snap.vehicles[key] for key in keys if key in snap.vehicles)
+        else:
+            candidates = snap.vehicles.values()
+        for v in candidates:
             if trip_id and v["trip_id"] != trip_id:
                 continue
             if service_date and v.get("start_date") and v["start_date"] != service_date.strftime("%Y%m%d"):

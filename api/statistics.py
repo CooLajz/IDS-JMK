@@ -90,9 +90,15 @@ class Statistics:
             "last_error",
             "last_download_bytes",
             "last_modified",
+            "next_check_at",
+            "consecutive_errors",
         )
         states = {source: self.source_state(source) for source in SOURCES[:2]}
-        return {source: {key: state.get(key) for key in allowed} for source, state in states.items()}
+        result = {source: {key: state.get(key) for key in allowed} for source, state in states.items()}
+        for state in result.values():
+            if state["next_check_at"] is not None:
+                state["next_check_at"] = iso(state["next_check_at"])
+        return result
 
     def cumulative(self):
         """Small all-time snapshot for monitoring clients; no calendar reset."""

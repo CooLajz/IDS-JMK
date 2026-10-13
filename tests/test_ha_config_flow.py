@@ -42,7 +42,8 @@ def test_all_filter_combinations(realtime):
             assert stored["line"] == ("" if line == ALL_VALUES else line)
             assert stored["direction"] == ("" if direction == ALL_VALUES else direction)
             flow.client.departures.assert_awaited_once_with(
-                stored["stop_id"], {name: stored[name] for name in ("line", "direction", "limit", "realtime")}
+                stored["stop_id"],
+                {**{name: stored[name] for name in ("line", "direction", "limit")}, "realtime": False}
             )
             assert ALL_VALUES not in stored.values()
     asyncio.run(run())
@@ -61,7 +62,7 @@ def test_card_registration_uses_content_version():
         )
         with patch("custom_components.ids_jmk.frontend.add_extra_js_url") as register:
             await async_register_card(hass)
-        assert hass.http.async_register_static_paths.call_count == 4
+        assert hass.http.async_register_static_paths.call_count == 5
         for call, name in zip(hass.http.async_register_static_paths.call_args_list[:3],
                               ("ids-jmk-departures-card.js", "ids-jmk-alerts-card.js", "ids-jmk-map-card.js"),
                               strict=True):
@@ -72,7 +73,8 @@ def test_card_registration_uses_content_version():
             assert paths[0].url_path == url
             assert paths[0].path == str(path)
             assert paths[0].cache_headers is False
-            version = sha256(path.read_bytes()).hexdigest()[:12]
+            helper = CARD_PATH.with_name("board-visibility.js").read_bytes()
+            version = sha256(path.read_bytes() + helper).hexdigest()[:12]
             register.assert_any_call(hass, f"{url}?v={version}")
         assert register.call_count == 3
 
@@ -192,7 +194,7 @@ def test_source_setup_isolates_failed_boards_and_statistics(tmp_path):
         hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
         boards = {
             key: SimpleNamespace(subentry_id=key, subentry_type='board', unique_id=key,
-                                 title=key, data={'stop_id': key})
+                                 title=key, data={'stop_id': key, 'continuous_updates': True})
             for key in ('good', 'bad')
         }
         entry = Mock(entry_id='source', data={'base_url': 'http://source.test', 'instance_id': 'source'},
@@ -224,7 +226,8 @@ def test_source_setup_isolates_failed_boards_and_statistics(tmp_path):
             unavailable_board = add.call_args_list[2].args[0][0]
             assert unavailable_board.available is False
             assert unavailable_board.native_value is None
-            assert unavailable_board.extra_state_attributes == {}
+            assert unavailable_board.extra_state_attributes["refresh_mode"] == "continuous"
+            assert unavailable_board.extra_state_attributes["departures"] == []
             client.return_value.statistics.side_effect = None
             client.return_value.statistics.return_value = {'lifetime': {}}
             await runtime['statistics'].async_refresh()
@@ -280,4 +283,28 @@ def test_departures_client_sends_explicit_realtime_preference():
                                       ({'realtime': False}, 'false')):
                 await client.departures('P', options)
                 assert get.call_args.args[1]['realtime'] == expected
+    asyncio.run(run())
+
+
+def test_map_trip_geometry_does_not_request_realtime():
+    import inspect
+
+    from custom_components.ids_jmk.vehicle_map import request
+
+    async def run():
+        entry = SimpleNamespace(entry_id='source', domain='ids_jmk', data={'base_url': 'http://source.test'})
+        hass = SimpleNamespace(config_entries=Mock(), data={'ids_jmk': {'source': {}}})
+        hass.config_entries.async_get_entry.return_value = entry
+        connection = Mock()
+        with patch('custom_components.ids_jmk.vehicle_map.async_get_clientsession'), \
+             patch('custom_components.ids_jmk.vehicle_map.Client') as client:
+            client.return_value.get = AsyncMock(return_value={'stops': []})
+            await inspect.unwrap(request)(hass, connection, {
+                'id': 1, 'entry_id': 'source', 'action': 'trip',
+                'trip_id': 'T', 'service_date': '2026-10-13',
+            })
+            client.return_value.get.assert_awaited_once_with(
+                'trips/T', {'service_date': '2026-10-13', 'realtime': 'false'},
+            )
+            connection.send_result.assert_called_once_with(1, {'stops': []})
     asyncio.run(run())

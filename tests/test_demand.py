@@ -137,3 +137,35 @@ def test_disabled_and_always_on_modes():
         finally:
             await stop(worker)
     asyncio.run(run())
+
+
+def test_persisted_cooldown_blocks_demand_and_fresh_requests_do_not_wait():
+    async def run():
+        now = [1000]
+        ready = asyncio.Event()
+        calls = []
+        demand = RealtimeDemand(enabled=True, interval=60, idle_timeout=300, clock=lambda: now[0],
+                                cooldown=lambda: max(0, 1100 - now[0]))
+
+        async def update():
+            calls.append(now[0])
+            await ready.wait()
+            return True
+
+        worker = asyncio.create_task(demand.run(update))
+        try:
+            # A persisted Retry-After returns cached data immediately and cannot be bypassed.
+            await asyncio.wait_for(demand.request(), 0.1)
+            await settle()
+            assert not calls
+            now[0] = 1100
+            await asyncio.wait_for(demand.request(wait=False), 0.1)
+            await settle()
+            assert calls == [1100] and demand.refreshing
+            await asyncio.wait_for(demand.request(wait=False), 0.1)
+            assert calls == [1100]
+            ready.set()
+            await settle()
+        finally:
+            await stop(worker)
+    asyncio.run(run())

@@ -125,7 +125,7 @@ class BoardSubentryFlow(config_entries.ConfigSubentryFlow):
             platform = user_input["platform"]
             stop_id = self.settings["stop_id"] if platform in ("", ALL_VALUES) else platform
             try:
-                await self.client.departures(stop_id, options)
+                await self.client.departures(stop_id, {**options, "realtime": False})
             except APIError:
                 errors["base"] = "cannot_connect"
             else:

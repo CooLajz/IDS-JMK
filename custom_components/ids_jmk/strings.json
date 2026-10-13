@@ -142,6 +142,11 @@
       "api_responses_5xx": {
         "name": "API Responses 5xx"
       }
+    },
+    "switch": {
+      "continuous_updates": {
+        "name": "Průběžné obnovování"
+      }
     }
   }
 }
