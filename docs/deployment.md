@@ -72,11 +72,12 @@ Samotná kontrola změn Gitu v Portaineru nezaručuje nasazení nového obrazu: 
 | `REALTIME_ENABLED` | `false` | `true` zapne stahování realtime, odhady, polohy a upozornění |
 | `REALTIME_URL` | Přímá adresa KORDIS níže | Zdroj realtime |
 | `GTFS_INTERVAL_SECONDS` | `86400` | Kontrola jízdních řádů každých 24 hodin, minimum 3600 s |
-| `REALTIME_INTERVAL_SECONDS` | `60` | Kontrola realtime každých 60 sekund, minimum 15 s |
+| `REALTIME_INTERVAL_SECONDS` | `60` | Kontrola realtime při aktivitě klientů, minimum 15 s |
+| `REALTIME_IDLE_TIMEOUT_SECONDS` | `300` | Uspání po neaktivitě; `0` ponechá nepřetržité stahování |
 | `REALTIME_MAX_AGE_SECONDS` | `180` | Maximální stáří použitelných realtime zpráv |
 | `DOWNLOAD_ENABLED` | `true` | `false` vypne stahování pro izolované testy |
 
-Intervaly můžete změnit v Portaineru v části **Environment variables** daného Stacku pomocí `GTFS_INTERVAL_SECONDS` a `REALTIME_INTERVAL_SECONDS` (hodnoty v sekundách). Pokud proměnné neuvedete, použije se 86400 a 60 sekund. Po změně znovu nasaďte Stack. Při startu se jízdní řád a případně zapnutý realtime načtou ihned; interval určuje prodlevu mezi dokončením obnovy a dalším stažením. Po neúspěšném stažení GTFS se pokus opakuje za 60 sekund. Obnova webové tabule a HA integrace z API zůstává každých 30 sekund.
+Intervaly můžete změnit v Portaineru v části **Environment variables** daného Stacku pomocí `GTFS_INTERVAL_SECONDS` a `REALTIME_INTERVAL_SECONDS` (hodnoty v sekundách). Pokud proměnné neuvedete, použije se 86400 a 60 sekund. Po změně znovu nasaďte Stack. Při startu se jízdní řád načte ihned. Povolený realtime standardně čeká na první požadavek klienta, který jej potřebuje; po pěti minutách bez takového požadavku se uspí. Parametr API `realtime=false`, statistiky ani healthchecky aktivitu neprodlužují. `REALTIME_IDLE_TIMEOUT_SECONDS=0` obnoví nepřetržité stahování od startu. Interval určuje prodlevu mezi dokončením obnovy a dalším stažením; při chybách realtime se prodlužuje až na 15 minut (nebo nastavený interval, je-li delší). Po neúspěšném stažení GTFS se pokus opakuje za 60 sekund. Obnova webové tabule a HA integrace z API zůstává každých 30 sekund.
 
 Realtime je **výchozí vypnutý**. Pro jeho použití nastavte v `.env` nebo v Portaineru `REALTIME_ENABLED=true` a znovu nasaďte Stack. Nastavení platí pro všechny přiložené Compose varianty. Hodnota `false` nebo neuvedená proměnná znamená provoz pouze podle jízdního řádu: realtime se nestahuje, odjezdy neobsahují odhady, zpoždění, polohy ani upozornění. Web nabídne mapu zastávek spoje bez vozidel. Statické GTFS se nadále obnovuje podle `GTFS_INTERVAL_SECONDS`.
 

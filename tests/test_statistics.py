@@ -285,6 +285,7 @@ def test_both_real_http_sources_return_304_after_application_restart(tmp_path):
         data_dir=tmp_path / "store",
         gtfs_url=base + "/gtfs",
         realtime_url=base + "/rt",
+        realtime_idle_timeout=0,  # Exercise continuous downloads and cache restoration.
         realtime_enabled=True,
         download_enabled=True,
     )

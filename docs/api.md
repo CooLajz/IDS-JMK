@@ -27,7 +27,7 @@
 | `/health/live` | Proces běží |
 | `/health/ready` | Byl dokončen alespoň jeden platný import |
 
-Parametry odjezdů: `limit` 1–100, `horizon` 1–2880 minut, `line` (například `501`), `direction` (přesný název cíle z detailu zastávky), `previous_limit` 0–10 (výchozí 0). Pro konkrétní stanoviště použijte jeho ID v URL. Směry v detailu jsou všechny varianty v platném souboru GTFS, nikoli jen aktuálně jedoucí varianty.
+Parametry odjezdů: `realtime` (`true` / `false`, výchozí `true`), `limit` 1–100, `horizon` 1–2880 minut, `line` (například `501`), `direction` (přesný název cíle z detailu zastávky), `previous_limit` 0–10 (výchozí 0). Pro konkrétní stanoviště použijte jeho ID v URL. Směry v detailu jsou všechny varianty v platném souboru GTFS, nikoli jen aktuálně jedoucí varianty.
 
 Základ odpovědi odjezdů je `stop`, `generated_at`, `timezone`, `realtime_enabled` a pole `departures` a `previous_departures`. Schéma každého řádku je popsané v OpenAPI. Pro HA jsou připravená také pole `departure_time_display` a `minutes_until`. Minuty platí k `generated_at`, nejsou běžícími hodinami; klient musí odpověď obnovovat.
 
@@ -117,6 +117,24 @@ Jde o druh dopravy linky podle jízdního řádu, nikoli ověření aktuálně n
 ## Volitelný realtime
 
 Realtime je výchozí vypnutý. Zapněte jej na serveru pomocí `REALTIME_ENABLED=true` a restartujte aplikaci / znovu nasaďte Stack. `REALTIME_ENABLED=false` vypne samotné stahování, zpracování a poskytování realtime; aktualizace statického GTFS pokračují.
+
+Každý klient může realtime vypnout pro konkrétní požadavek parametrem **`realtime=false`**, i když jej server povoluje:
+
+```text
+/api/v1/stops/ID/departures?limit=10&realtime=false
+/api/v1/trips/ID?service_date=2026-10-13&realtime=false
+/api/v1/vehicles?realtime=false
+```
+
+Parametr podporuje také `POST /api/v1/map/vehicles?realtime=false` (výběr linek zůstává v JSON těle). Výchozí `realtime=true` zachovává chování dosavadních klientů; nemůže zapnout realtime, pokud je na serveru zakázán. `realtime_enabled` v datové odpovědi vyjadřuje použití realtime pro daný požadavek. `/status` nadále popisuje nastavení celého serveru.
+
+S `realtime=false` se odjezdy **počítají i řadí jen podle jízdního řádu**, včetně odpočtu a minulých odjezdů. Nejde pouze o skrytí sloupce zpoždění. Ignoruje se i již naplněná realtime cache, která zůstává zachována pro ostatní klienty.
+
+Při povoleném realtime server standardně čeká na první požadavek, který tato data potřebuje. Po **300 sekundách bez takového požadavku** přestane realtime stahovat. Požadavky s `realtime=false`, healthchecky, statistiky, stav serveru a statické seznamy stahování neprobouzejí ani neprodlužují. Prázdný výběr mapy a detail spoje mimo jeho provozní den také neprodlužují aktivitu. Statické GTFS se obnovuje nezávisle.
+
+Relevantní požadavek obnoví aktivitu a při splatné aktualizaci čeká nejvýše tři sekundy na společné stažení. Poté dostane dostupná data s dosavadním označením stáří; probíhající stažení pokračuje. Souběžní klienti sdílejí jediný downloader. Mezi pokusy platí `REALTIME_INTERVAL_SECONDS`; při chybách se prodleva zdvojnásobuje až na 15 minut (nebo nastavený interval, je-li delší). Nový dotaz tuto prodlevu neobchází a úspěch obnoví běžný interval.
+
+Dobu neaktivity nastavuje `REALTIME_IDLE_TIMEOUT_SECONDS` (výchozí `300`); `0` ponechá nepřetržité stahování. Po vypnutí posledního realtime klienta může doběhnout již zahájené stažení a zbývající okno aktivity. Ve `/status` obsahuje `realtime` při povolení také `download_state` (`idle`, `active`, `refreshing`, `disabled`), `idle_timeout_seconds` a `last_requested_at`. Stav `disabled` zde znamená zakázané stahování. Zastaralá cache při uspání není sama o sobě chybou stahování.
 
 Při vypnutí obsahuje odpověď odjezdů `realtime_enabled: false`, jízdní řád a `source: "schedule"`. Pole `estimated_departure`, `delay_seconds`, `realtime_updated_at`, `cancelled`, `vehicle_id`, `has_vehicle_position` se v jednotlivých odjezdech **vynechávají**, stejně jako `realtime_stale`, `alerts`, `alerts_stale` a `alerts_updated_at` v celé tabuli. Platí to i pro `previous_departures`. `departure_time` odpovídá `scheduled_departure`; chybějící realtime není chyba ani potvrzení nulového zpoždění.
 

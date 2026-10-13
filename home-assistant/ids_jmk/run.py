@@ -10,6 +10,7 @@ INTERVALS = {
     "gtfs_interval_seconds": (86400, 3600),
     "realtime_interval_seconds": (60, 15),
     "realtime_max_age_seconds": (180, 30),
+    "realtime_idle_timeout_seconds": (300, 0),
 }
 
 

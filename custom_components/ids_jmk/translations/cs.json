@@ -50,14 +50,18 @@
             "platform": "Stanoviště",
             "line": "Linka",
             "direction": "Směr",
-            "limit": "Počet odjezdů"
-          }
+            "limit": "Počet odjezdů",
+            "realtime": "Používat realtime data (zpoždění a upozornění)"
+          },
+          "description": "Při vypnutí se použije pouze jízdní řád. Tabule nebude vyžadovat stahování realtime dat. Nastavení platí pro její senzor a všechny navázané karty."
         },
         "reconfigure": {
           "title": "Nastavení tabule",
           "data": {
-            "limit": "Počet odjezdů"
-          }
+            "limit": "Počet odjezdů",
+            "realtime": "Používat realtime data (zpoždění a upozornění)"
+          },
+          "description": "Při vypnutí se použije pouze jízdní řád. Tabule nebude vyžadovat stahování realtime dat. Nastavení platí pro její senzor a všechny navázané karty."
         },
         "user": {
           "title": "Vyhledat zastávku",

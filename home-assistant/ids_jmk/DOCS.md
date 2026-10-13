@@ -23,7 +23,10 @@ Repozitář aplikací a HACS mají rozdílnou funkci. Přidání tohoto repozit�
 | `realtime_enabled` | `false` | Stahování zpoždění, poloh a upozornění |
 | `gtfs_interval_seconds` | `86400` | Kontrola jízdních řádů; minimum 3600 sekund |
 | `realtime_interval_seconds` | `60` | Obnova realtime; minimum 15 sekund |
+| `realtime_idle_timeout_seconds` | `300` | Uspání bez realtime požadavků; `0` ponechá nepřetržité stahování |
 | `realtime_max_age_seconds` | `180` | Nejvyšší přijatelné stáří realtime; minimum 30 sekund |
+
+Povolený realtime se začne stahovat až na požadavek klienta a po pěti minutách neaktivity se uspí. V nastavení jednotlivé tabule v integraci můžete vypnout **Používat realtime data (zpoždění a upozornění)**; taková tabule ani statistické senzory stahování neudržují.
 
 Po změně nastavení aplikaci restartujte. Bez realtime jsou dostupné plánované odjezdy. Aplikace stahuje data přímo z KORDIS JMK; nepotřebuje externí instanci našeho parseru.
 

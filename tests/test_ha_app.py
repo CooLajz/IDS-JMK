@@ -27,6 +27,7 @@ def test_supervisor_defaults_match_api(monkeypatch):
     assert settings.gtfs_interval == 86400
     assert settings.realtime_interval == 60
     assert settings.realtime_max_age == 180
+    assert settings.realtime_idle_timeout == 300
     assert launcher.options_environment({}) == environment
 
 
@@ -37,10 +38,12 @@ def test_custom_options():
     }) == {
         "REALTIME_ENABLED": "true", "GTFS_INTERVAL_SECONDS": "3600",
         "REALTIME_INTERVAL_SECONDS": "15", "REALTIME_MAX_AGE_SECONDS": "30",
+        "REALTIME_IDLE_TIMEOUT_SECONDS": "300",
     }
 
 
 @pytest.mark.parametrize("options", [
+    {"realtime_idle_timeout_seconds": -1}, {"realtime_idle_timeout_seconds": True},
     [], None, {"realtime_enabled": "false"}, {"realtime_enabled": 1},
     {"gtfs_interval_seconds": 3599}, {"realtime_interval_seconds": 14},
     {"realtime_max_age_seconds": 29}, {"gtfs_interval_seconds": True},

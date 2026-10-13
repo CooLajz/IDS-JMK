@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from .config import Settings
+from .demand import RealtimeDemand
 from .downloads import SourceDownloader, source_key
 from .gtfs import TZ, Timetable, iso
 from .models import DepartureBoard, MapSelection
@@ -28,6 +29,11 @@ def create_app(settings=None):
     timetable = Timetable(settings.data_dir.resolve())
     realtime = Realtime(settings.realtime_max_age)
     schedule_only = Realtime(settings.realtime_max_age)
+    demand = RealtimeDemand(
+        enabled=settings.download_enabled and settings.realtime_enabled,
+        interval=settings.realtime_interval,
+        idle_timeout=settings.realtime_idle_timeout,
+    )
     state = {"importing": False, "gtfs_last_checked": None, "gtfs_error": None, "realtime_error": None}
     id_file = timetable.directory / "instance-id"
     if not id_file.exists():
@@ -92,7 +98,7 @@ def create_app(settings=None):
             await asyncio.sleep(settings.gtfs_interval if not state["gtfs_error"] else 60)
 
     async def realtime_loop(client):
-        while True:
+        async def update():
             try:
                 await downloader.update(
                     client,
@@ -104,10 +110,12 @@ def create_app(settings=None):
                     accept_realtime,
                 )
                 state["realtime_error"] = None
+                return True
             except Exception as exc:
                 state["realtime_error"] = type(exc).__name__
                 LOG.warning("Aktualizace realtime selhala: %s", type(exc).__name__)
-            await asyncio.sleep(settings.realtime_interval)
+                return False
+        await demand.run(update)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -141,6 +149,7 @@ def create_app(settings=None):
     app.state.statistics = statistics
     app.state.timetable = timetable
     app.state.realtime = realtime
+    app.state.realtime_demand = demand
 
     @app.exception_handler(KeyError)
     async def not_found(request, exc):
@@ -200,6 +209,9 @@ def create_app(settings=None):
             "schedule_expired": bool(valid_to and valid_to < datetime.now(TZ).strftime("%Y%m%d")),
             "realtime": {
                 "enabled": True,
+                "download_state": demand.status,
+                "idle_timeout_seconds": settings.realtime_idle_timeout,
+                "last_requested_at": iso(demand.last_requested_at) if demand.last_requested_at else None,
                 "updated_at": iso(realtime.snapshot.timestamp) if realtime.snapshot.timestamp else None,
                 "stale": not realtime.fresh(realtime.snapshot.timestamp, time.time()),
                 "vehicles": len(realtime.snapshot.vehicles),
@@ -222,8 +234,9 @@ def create_app(settings=None):
     @app.get(
         "/api/v1/stops/{stop_id}/departures", response_model=DepartureBoard, response_model_exclude_unset=True
     )
-    def departures(
+    async def departures(
         stop_id: str,
+        include_realtime: bool = Query(True, alias="realtime"),
         limit: int = Query(10, ge=1, le=100),
         horizon: int = Query(1440, ge=1, le=2880),
         line: str | None = Query(None, max_length=50),
@@ -236,9 +249,15 @@ def create_app(settings=None):
         ),
     ):
         ready()
-        result = timetable.departures(
+        use_realtime = settings.realtime_enabled and include_realtime
+        if use_realtime:
+            # Reject an unknown stop before extending the download activity window.
+            await asyncio.to_thread(timetable.detail, stop_id)
+            await demand.request()
+        result = await asyncio.to_thread(
+            timetable.departures,
             stop_id,
-            realtime if settings.realtime_enabled else schedule_only,
+            realtime if use_realtime else schedule_only,
             datetime.now(TZ),
             limit,
             horizon,
@@ -246,9 +265,11 @@ def create_app(settings=None):
             direction,
             previous_limit,
         )
-        result["realtime_enabled"] = settings.realtime_enabled
-        if settings.realtime_enabled:
-            result.update(timetable.board_alerts(stop_id, realtime, datetime.now(TZ), line, direction))
+        result["realtime_enabled"] = use_realtime
+        if use_realtime:
+            result.update(await asyncio.to_thread(
+                timetable.board_alerts, stop_id, realtime, datetime.now(TZ), line, direction
+            ))
             result["realtime_stale"] = not realtime.fresh(realtime.snapshot.timestamp, time.time())
         else:
             for row in result["departures"] + result["previous_departures"]:
@@ -264,15 +285,22 @@ def create_app(settings=None):
         return result
 
     @app.get("/api/v1/trips/{trip_id}")
-    def trip(trip_id: str, service_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
+    async def trip(
+        trip_id: str,
+        service_date: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$"),
+        include_realtime: bool = Query(True, alias="realtime"),
+    ):
         ready()
         try:
             day = datetime.strptime(service_date, "%Y-%m-%d").date()
         except ValueError:
             raise HTTPException(422, "Neplatné datum") from None
-        result = timetable.trip(trip_id, day)
-        result["realtime_enabled"] = settings.realtime_enabled
-        if settings.realtime_enabled:
+        result = await asyncio.to_thread(timetable.trip, trip_id, day)
+        use_realtime = settings.realtime_enabled and include_realtime
+        result["realtime_enabled"] = use_realtime
+        if use_realtime:
+            if result["active"]:
+                await demand.request()
             result["vehicles"] = (
                 realtime.trip_vehicles(trip_id, result["stops"], day, time.time()) if result["active"] else []
             )
@@ -291,21 +319,35 @@ def create_app(settings=None):
         return map_stops(timetable, selections)
 
     @app.post("/api/v1/map/vehicles")
-    def selected_vehicles(selections: list[MapSelection]):
+    async def selected_vehicles(
+        selections: list[MapSelection], include_realtime: bool = Query(True, alias="realtime"),
+    ):
         ready()
         if len(selections) > 20:
             raise HTTPException(422, "Vyberte nejvýše 20 linek.")
-        return map_vehicles(timetable, realtime, selections, settings.realtime_enabled)
+        use_realtime = settings.realtime_enabled and include_realtime
+        if use_realtime and selections:
+            await demand.request()
+        return await asyncio.to_thread(
+            map_vehicles, timetable, realtime if use_realtime else schedule_only, selections, use_realtime
+        )
 
     @app.get("/api/v1/vehicles")
-    def vehicles(trip_id: str | None = None):
+    async def vehicles(
+        trip_id: str | None = None, include_realtime: bool = Query(True, alias="realtime"),
+    ):
         ready()
-        if not settings.realtime_enabled:
+        if not (settings.realtime_enabled and include_realtime):
             return {"realtime_enabled": False, "vehicles": []}
-        ids = {key[0] for key in realtime.snapshot.vehicles if not trip_id or key[0] == trip_id}
-        with timetable.connect() as db:
-            positions = {key: timetable.trip_stops(db, key) for key in ids}
-        return {"vehicles": realtime.vehicle_list(trip_id, stops_by_trip=positions)}
+        await demand.request()
+
+        def result():
+            ids = {key[0] for key in realtime.snapshot.vehicles if not trip_id or key[0] == trip_id}
+            with timetable.connect() as db:
+                positions = {key: timetable.trip_stops(db, key) for key in ids}
+            return {"vehicles": realtime.vehicle_list(trip_id, stops_by_trip=positions)}
+
+        return await asyncio.to_thread(result)
 
     return app
 

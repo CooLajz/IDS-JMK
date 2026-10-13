@@ -25,12 +25,14 @@
     "realtime_enabled": false,
     "gtfs_interval_seconds": 86400,
     "realtime_interval_seconds": 60,
-    "realtime_max_age_seconds": 180
+    "realtime_max_age_seconds": 180,
+    "realtime_idle_timeout_seconds": 300
   },
   "schema": {
     "realtime_enabled": "bool",
     "gtfs_interval_seconds": "int(3600,)",
     "realtime_interval_seconds": "int(15,)",
-    "realtime_max_age_seconds": "int(30,)"
+    "realtime_max_age_seconds": "int(30,)",
+    "realtime_idle_timeout_seconds": "int(0,)"
   }
 }

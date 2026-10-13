@@ -47,7 +47,10 @@ class Client:
             raise APIError("API unavailable") from exc
 
     async def departures(self, stop_id, options):
-        params = {"limit": options.get("limit", 10), "horizon": 1440}
+        params = {
+            "limit": options.get("limit", 10), "horizon": 1440,
+            "realtime": str(options.get("realtime", True)).lower(),
+        }
         for key in ("line", "direction"):
             if options.get(key):
                 params[key] = options[key]

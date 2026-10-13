@@ -64,9 +64,13 @@ V **Nastavení → Zařízení a služby → Přidat integraci → IDS JMK**:
 1. Zadejte adresu serveru, například `http://192.168.1.10:8080`. Pokud používáte webový kontejner, můžete zadat jeho adresu a port; `/api` proxy je jeho součástí.
 2. Vznikne zdroj se statistickými senzory. Pod tímto zdrojem zvolte **Přidat odjezdovou tabuli**.
 3. Vyhledejte zastávku podle názvu a vyberte ji.
-4. Zvolte všechna nebo konkrétní stanoviště, linku, směr a počet odjezdů.
+4. Zvolte všechna nebo konkrétní stanoviště, linku, směr a počet odjezdů. Pokud chcete pouze jízdní řád, vypněte **Používat realtime data (zpoždění a upozornění)**.
 
-Pro každou tabuli vznikne jeden senzor. Jeho stav je počet minut do nejbližšího nezrušeného odjezdu. Atribut `departures` obsahuje celou tabulku. Při výpadku API se senzor označí jako nedostupný. Další tabuli přidejte pod stejným zdrojem, bez opětovného zadávání adresy. Počet řádků lze měnit volbou **Překonfigurovat** u tabule. Další server přidejte jako novou integraci; má vlastní tabule i statistiky. Změnu adresy téhož serveru proveďte volbou **Překonfigurovat** u zdroje.
+Pro každou tabuli vznikne jeden senzor. Jeho stav je počet minut do nejbližšího nezrušeného odjezdu. Atribut `departures` obsahuje celou tabulku. Při výpadku API se senzor označí jako nedostupný. Další tabuli přidejte pod stejným zdrojem, bez opětovného zadávání adresy. Počet řádků a použití realtime lze měnit volbou **Překonfigurovat** u tabule. Další server přidejte jako novou integraci; má vlastní tabule i statistiky. Změnu adresy téhož serveru proveďte volbou **Překonfigurovat** u zdroje.
+
+Volba realtime patří **tabuli v integraci**, nikoli jednotlivé kartě dashboardu. Platí pro její senzor, všechny navázané karty i automatizace. Při vypnutí integrace posílá `realtime=false`: server vrací jen plánované časy, odpočet podle jízdního řádu a žádná realtime upozornění. Tato tabule neudržuje stahování realtime v chodu. Karta se přizpůsobí automaticky.
+
+Výchozí hodnota volby je zapnutá, také u dosavadních tabulí; realtime musí současně povolit parser. Zapnutá tabule průběžným dotazováním udržuje server aktivní i při zavřeném dashboardu. Jiná realtime tabule nebo mapa vozidel může dál vyžadovat stahování. Pokud realtime nepotřebuje žádný klient, parser po pěti minutách usne. Samotné statistické senzory jej neprobouzejí. Pro tento režim aktualizujte API i integraci; starší API parametr nemusí respektovat.
 
 Tabule lze jednotlivě odebrat z podřízených konfigurací zdroje.
 

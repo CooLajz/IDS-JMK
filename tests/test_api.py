@@ -449,6 +449,7 @@ def test_source_outage_keeps_imported_schedule(tmp_path, monkeypatch):
     app = create_app(Settings(data_dir=tmp_path / "app", download_enabled=True, realtime_enabled=True))
     app.state.timetable.import_zip(archive(tmp_path / "feed.zip"))
     with TestClient(app) as client:
+        client.get("/api/v1/vehicles")  # Realtime starts only on demand.
         for _ in range(100):
             status = client.get("/api/v1/status").json()
             if status["gtfs_error"] and status["realtime_error"]:
@@ -669,3 +670,107 @@ def test_map_stops_include_all_variants_without_live_vehicles(timetable):
     assert all(s['route_id'] == 'R' and s['line'] == '501' for s in both)
     assert map_stops(timetable, []) == {'stops': []}
     assert map_stops(timetable, [MapSelection(route_id="R' OR 1=1 --")]) == {'stops': []}
+
+
+@pytest.mark.parametrize('server_realtime', [False, True])
+def test_schedule_only_requests_never_wake_downloader(tmp_path, monkeypatch, server_realtime):
+    from unittest.mock import AsyncMock
+
+    update = AsyncMock(return_value=True)
+    monkeypatch.setattr('api.main.SourceDownloader.update', update)
+    app = create_app(Settings(data_dir=tmp_path / 'app', realtime_enabled=server_realtime))
+    app.state.timetable.import_zip(archive(tmp_path / 'feed.zip'))
+    with TestClient(app) as client:
+        for path in (
+            '/health/live', '/health/ready', '/api/v1/status', '/api/v1/statistics',
+            '/api/v1/statistics/cumulative', '/api/v1/stops', '/api/v1/stops/P',
+            '/api/v1/map/routes', '/api/v1/stops/P/departures?realtime=false',
+            '/api/v1/trips/T?service_date=2026-10-11&realtime=false',
+            '/api/v1/vehicles?realtime=false',
+        ):
+            assert client.get(path).status_code == 200
+        assert client.post('/api/v1/map/stops', json=[{'route_id': 'R'}]).status_code == 200
+        assert client.post('/api/v1/map/vehicles?realtime=false', json=[{'route_id': 'R'}]).status_code == 200
+        assert client.post('/api/v1/map/vehicles', json=[]).status_code == 200
+        assert client.get('/api/v1/stops/missing/departures').status_code == 404
+        assert client.get('/api/v1/stops/P/departures?realtime=invalid').status_code == 422
+        assert client.get('/api/v1/trips/T?service_date=2026-10-12').status_code == 200  # No service.
+        if not server_realtime:
+            assert client.get('/api/v1/stops/P/departures?realtime=true').json()['realtime_enabled'] is False
+        assert app.state.realtime_demand.last_demand is None
+        assert [call.args[1] for call in update.await_args_list] == ['gtfs']
+
+
+@pytest.mark.parametrize('path,payload', [
+    ('/api/v1/stops/P/departures?realtime=true', None),
+    ('/api/v1/stops/P/departures', None),  # Existing clients keep requesting realtime.
+    ('/api/v1/trips/T?service_date=2026-10-11&realtime=true', None),
+    ('/api/v1/vehicles?realtime=true', None),
+    ('/api/v1/map/vehicles?realtime=true', [{'route_id': 'R'}]),
+])
+def test_realtime_endpoints_wake_one_shared_download(tmp_path, monkeypatch, path, payload):
+    from unittest.mock import AsyncMock
+
+    update = AsyncMock(return_value=True)
+    monkeypatch.setattr('api.main.SourceDownloader.update', update)
+    app = create_app(Settings(data_dir=tmp_path / 'app', realtime_enabled=True))
+    app.state.timetable.import_zip(archive(tmp_path / 'feed.zip'))
+    with TestClient(app) as client:
+        assert client.get('/api/v1/status').json()['realtime']['download_state'] == 'idle'
+        response = client.get(path) if payload is None else client.post(path, json=payload)
+        assert response.status_code == 200
+        assert client.get('/api/v1/status').json()['realtime']['download_state'] == 'active'
+        stamp = app.state.realtime_demand.last_demand
+        client.get('/api/v1/stops/P/departures?realtime=false')
+        assert app.state.realtime_demand.last_demand == stamp
+        client.get('/api/v1/vehicles')
+        assert [call.args[1] for call in update.await_args_list].count('realtime') == 1
+
+
+def test_opt_out_ignores_warm_cache_and_recomputes_departures(tmp_path, monkeypatch):
+    now = at('2026-10-11T14:01:00')
+
+    class FixedDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now
+
+    monkeypatch.setattr('api.main.datetime', FixedDatetime)
+    monkeypatch.setattr('api.realtime.time.time', lambda: now.timestamp())
+    app = create_app(Settings(data_dir=tmp_path / 'app', realtime_enabled=True, download_enabled=False))
+    app.state.timetable.import_zip(archive(tmp_path / 'feed.zip'))
+    feed = pb.FeedMessage()
+    feed.header.gtfs_realtime_version = '2.0'
+    feed.header.timestamp = int(now.timestamp())
+    entity = feed.entity.add()
+    entity.id = 'delay'
+    entity.trip_update.trip.trip_id = 'T'
+    entity.trip_update.trip.start_date = '20261011'
+    stop = entity.trip_update.stop_time_update.add()
+    stop.stop_sequence = 1
+    stop.departure.delay = 300
+    app.state.realtime.ingest(feed.SerializeToString())
+    with TestClient(app) as client:
+        rt = client.get('/api/v1/stops/P/departures?previous_limit=1').json()
+        assert rt['departures'][0]['trip_id'] == 'T'
+        assert rt['departures'][0]['delay_seconds'] == 300
+        plain = client.get('/api/v1/stops/P/departures?realtime=false&previous_limit=1').json()
+        assert plain['realtime_enabled'] is False
+        assert plain['departures'][0]['trip_id'] == 'N'
+        assert plain['previous_departures'][0]['trip_id'] == 'T'
+        assert plain['previous_departures'][0]['minutes_until'] == -1
+        assert not {'alerts', 'alerts_stale', 'alerts_updated_at', 'realtime_stale'} & plain.keys()
+        for row in plain['departures'] + plain['previous_departures']:
+            assert row['source'] == 'schedule'
+            assert row['departure_time'] == row['scheduled_departure']
+            assert not {'delay_seconds', 'cancelled', 'estimated_departure', 'vehicle_id',
+                        'has_vehicle_position', 'realtime_updated_at'} & row.keys()
+        assert 'vehicles' not in client.get(
+            '/api/v1/trips/T?service_date=2026-10-11&realtime=false'
+        ).json()
+        vehicles = client.get('/api/v1/vehicles?realtime=false').json()
+        assert vehicles == {'realtime_enabled': False, 'vehicles': []}
+        mapped = client.post('/api/v1/map/vehicles?realtime=false', json=[{'route_id': 'R'}]).json()
+        assert mapped['vehicles'] == [] and mapped['updated_at'] is None
+        # Opting out must not purge data used by another client.
+        assert client.get('/api/v1/stops/P/departures').json()['departures'][0]['delay_seconds'] == 300

@@ -50,14 +50,18 @@
             "platform": "Platform",
             "line": "Line",
             "direction": "Destination",
-            "limit": "Departure count"
-          }
+            "limit": "Departure count",
+            "realtime": "Use realtime data (delays and alerts)"
+          },
+          "description": "When disabled, only the timetable is used and this board does not request realtime downloads. This applies to its sensor and all linked cards."
         },
         "reconfigure": {
           "title": "Board settings",
           "data": {
-            "limit": "Departure count"
-          }
+            "limit": "Departure count",
+            "realtime": "Use realtime data (delays and alerts)"
+          },
+          "description": "When disabled, only the timetable is used and this board does not request realtime downloads. This applies to its sensor and all linked cards."
         },
         "user": {
           "title": "Search for a stop",

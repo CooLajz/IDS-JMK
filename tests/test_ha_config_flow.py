@@ -11,7 +11,8 @@ pytest.importorskip("homeassistant")
 from custom_components.ids_jmk.config_flow import ALL_VALUES, BoardSubentryFlow, ConfigFlow  # noqa: E402
 
 
-def test_all_filter_combinations():
+@pytest.mark.parametrize("realtime", [False, True])
+def test_all_filter_combinations(realtime):
     async def run():
         for platform, line, direction in product([ALL_VALUES, "U15118Z2"], [ALL_VALUES, "501"],
                                                  [ALL_VALUES, "Nebovidy, dolní konec"]):
@@ -28,18 +29,20 @@ def test_all_filter_combinations():
             defaults = schema({})
             assert all(defaults[name] for name in ("platform", "line", "direction"))
             for field, validator in schema.schema.items():
-                if str(field) != "limit":
+                if str(field) in ("platform", "line", "direction"):
                     assert "" not in validator.container
-            data = schema({"platform": platform, "line": line, "direction": direction, "limit": 10})
+            data = schema({"platform": platform, "line": line, "direction": direction,
+                           "limit": 10, "realtime": realtime})
             with patch.object(flow, "_get_entry", return_value=SimpleNamespace(subentries={})):
                 result = await flow.async_step_board(data)
             assert result["type"] == "create_entry"
             stored = result["data"]
             assert stored["stop_id"] == ("U15118N1858" if platform == ALL_VALUES else platform)
+            assert stored["realtime"] is realtime
             assert stored["line"] == ("" if line == ALL_VALUES else line)
             assert stored["direction"] == ("" if direction == ALL_VALUES else direction)
             flow.client.departures.assert_awaited_once_with(
-                stored["stop_id"], {name: stored[name] for name in ("line", "direction", "limit")}
+                stored["stop_id"], {name: stored[name] for name in ("line", "direction", "limit", "realtime")}
             )
             assert ALL_VALUES not in stored.values()
     asyncio.run(run())
@@ -242,9 +245,9 @@ def test_subentry_reconfigure_updates_limit_without_changing_identity():
              patch.object(flow, '_get_reconfigure_subentry', return_value=board), \
              patch.object(flow, 'async_update_and_abort', return_value={'type': 'abort'}) as update:
             form = await flow.async_step_reconfigure()
-            assert form['data_schema']({}) == {'limit': 10}
-            await flow.async_step_reconfigure({'limit': 25})
-            update.assert_called_once_with(entry, board, data_updates={'limit': 25})
+            assert form['data_schema']({}) == {'limit': 10, 'realtime': True}
+            await flow.async_step_reconfigure({'limit': 25, 'realtime': False})
+            update.assert_called_once_with(entry, board, data_updates={'limit': 25, 'realtime': False})
     asyncio.run(run())
 
 
@@ -262,4 +265,19 @@ def test_statistics_client_rejects_missing_negative_or_boolean_counters():
                 valid['lifetime']['gtfs']['bytes'] = bad
                 with pytest.raises(APIError):
                     await client.statistics()
+    asyncio.run(run())
+
+
+def test_departures_client_sends_explicit_realtime_preference():
+    from custom_components.ids_jmk.client import Client
+
+    async def run():
+        client = Client(Mock(), 'http://source.test')
+        with patch.object(client, 'get', new=AsyncMock(return_value={
+            'departures': [], 'generated_at': 'now',
+        })) as get:
+            for options, expected in (({}, 'true'), ({'realtime': True}, 'true'),
+                                      ({'realtime': False}, 'false')):
+                await client.departures('P', options)
+                assert get.call_args.args[1]['realtime'] == expected
     asyncio.run(run())

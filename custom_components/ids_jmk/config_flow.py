@@ -118,6 +118,7 @@ class BoardSubentryFlow(config_entries.ConfigSubentryFlow):
         errors = {}
         if user_input:
             options = {k: user_input[k] for k in ("line", "direction", "limit")}
+            options["realtime"] = user_input.get("realtime", True)
             for name in ("line", "direction"):
                 if options[name] == ALL_VALUES:
                     options[name] = ""
@@ -157,6 +158,7 @@ class BoardSubentryFlow(config_entries.ConfigSubentryFlow):
                     vol.Required("direction", default=ALL_VALUES): vol.In(
                         {ALL_VALUES: "Všechny směry", **{v: v for v in self.details["directions"]}}
                     ),
+                    vol.Required("realtime", default=True): bool,
                     vol.Required("limit", default=10): vol.All(vol.Coerce(int), vol.Range(min=1, max=50)),
                 }
             ),
@@ -171,6 +173,7 @@ class BoardSubentryFlow(config_entries.ConfigSubentryFlow):
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=vol.Schema({
+                vol.Required("realtime", default=subentry.data.get("realtime", True)): bool,
                 vol.Required("limit", default=subentry.data.get("limit", 10)):
                     vol.All(vol.Coerce(int), vol.Range(min=1, max=50)),
             }),
