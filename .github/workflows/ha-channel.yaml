@@ -1,0 +1,38 @@
+name: Nabídka verzí aplikace HA
+on:
+  workflow_call:
+    inputs:
+      channel:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      source:
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: ha-channel-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Aktualizace nabídky až po publikování obrazů
+        env:
+          HA_CHANNEL: ${{ inputs.channel }}
+          HA_VERSION: ${{ inputs.version }}
+          HA_SOURCE: ${{ inputs.source }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python scripts/ha_channels.py publish --channel "$HA_CHANNEL" --version "$HA_VERSION" --source "$HA_SOURCE"

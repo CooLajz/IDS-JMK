@@ -14,7 +14,7 @@ spec.loader.exec_module(launcher)
 
 
 def test_supervisor_defaults_match_api(monkeypatch):
-    config = json.loads((APP / "config.json").read_text())
+    config = json.loads((APP / "manifest.json").read_text())
     environment = launcher.options_environment(config["options"])
     for key, value in environment.items():
         monkeypatch.setenv(key, value)

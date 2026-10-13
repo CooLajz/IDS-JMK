@@ -60,7 +60,9 @@ První start automaticky stáhne jízdní řády a vytvoří databázi v `data/`
 | `web/` | Samostatný web, Vite a nginx proxy |
 | `custom_components/ids_jmk/` | HA konfigurace, klient, senzory a WebSocket |
 | `custom_components/ids_jmk/www/` | Tři vlastní dashboardové karty a Leaflet |
-| `home-assistant/ids_jmk/` | Balení parseru jako aplikace HA OS |
+| `home-assistant/ids_jmk/` | Společná šablona, spouštění a vydaná aplikace HA OS |
+| `home-assistant/ids_jmk_dev/` | Samostatná vývojová varianta v obchodě HA |
+| `scripts/ha_channels.py` | Publikování nabídky verzí po dokončení sestavení |
 | `tests/` | Python testy a JavaScript testy karet |
 | `docs/preview/`, `docs/screenshots/` | Ukázková data, náhled a obrázky dokumentace |
 

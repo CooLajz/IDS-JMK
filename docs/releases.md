@@ -3,7 +3,7 @@
 Změny se nejprve ověří v CI a na testovací instalaci. Repozitář obsahuje dva Dockerfile, HA variantu API (target `home-assistant`) a samostatnou HA integraci.
 
 1. Ověřte aktuálnost licence MIT a uvedení zdrojů v `docs/data-sources.md` (GTFS i realtime: CC BY 4.0).
-2. Sjednoťte verzi v `pyproject.toml`, `web/package.json`, `web/package-lock.json`, manifestu integrace, API, Compose konfiguracích a `home-assistant/ids_jmk/config.json`. Obnovte `uv.lock` a export `requirements.txt`, pokud se změnily závislosti.
+2. Sjednoťte verzi v `pyproject.toml`, `web/package.json`, `web/package-lock.json`, manifestu integrace, API a Compose konfiguracích. Nastavení aplikace upravujte ve společné šabloně `home-assistant/ids_jmk/manifest.json`; distribuované `config.json` neměňte ručně, aktualizuje je workflow až po publikování obrazů. Obnovte `uv.lock` a export `requirements.txt`, pokud se změnily závislosti.
 3. Spusťte testy, build webu, hassfest a všechny tři Docker obrazy včetně HA varianty na ARM64 a AMD64. Ověřte první import, proxy webu a persistentní data po restartu.
 4. Nahrajte odpovídající tag `vX.Y.Z` pouze pro schválené vydání.
 5. Workflow sestaví obrazy `ghcr.io/coolajz/ids-jmk-api:X.Y.Z`, `ghcr.io/coolajz/ids-jmk-web:X.Y.Z` a `ghcr.io/coolajz/ids-jmk-ha:X.Y.Z` pro AMD64 a ARM64 a vytvoří **draft** GitHub releasu se třemi Compose konfiguracemi, příkladem prostředí, licencí, uvedením zdrojů dat a ZIPem integrace.
@@ -15,9 +15,19 @@ Tag spouští také znovu všechny kontroly z CI. Pro každý nový release ově
 
 ## První vydání aplikace HA
 
-Aplikace používá předem sestavený obraz; Supervisor ji nesestavuje ze zdrojů. První vydání aplikace je `0.1.4` a jeho sestavení spouští tag `v0.1.4`. Instalační manifest musí odkazovat na existující veřejný číselný tag obrazu. Při dalších vydáních sjednoťte všechny verze na nové nepoužité číslo a aktualizujte changelog aplikace. Již vydané tagy nepřepisujte.
+Aplikace používá předem sestavený obraz; Supervisor ji nesestavuje ze zdrojů. První vydání aplikace je `0.1.4` a jeho sestavení spouští tag `v0.1.4`. Instalační manifest musí odkazovat na existující veřejný číselný tag obrazu. Při dalších vydáních sjednoťte zdrojové verze na nové nepoužité číslo a aktualizujte changelog aplikace. Distribuovaný manifest stabilní aplikace zůstává na poslední sestavené verzi, dokud není hotové vydávací workflow. Již vydané tagy nepřepisujte.
 
-Vývojové sestavení publikuje také `ghcr.io/coolajz/ids-jmk-ha:dev` a `dev-<SHA>`. Instalační manifest HA zůstává na číselné verzi, takže běžní uživatelé nedostávají vývojové obrazy automaticky.
+## Kanály aplikace HA
+
+Workflow **Kontroly** po úspěšném pushi do `main` publikuje také HA obraz s jedinečnou verzí `<verze-projektu>-dev<pořadové-číslo>`. Čítač je `číslo běhu × 1000 + pokus`, takže jej knihovna verzí Home Assistantu správně řadí i při opakovaném spuštění (pokus 1–999). Nadále zachovává aliasy `dev` a `dev-<SHA>` pro Docker instalace. HA varianta Dev odkazuje na konkrétní sestavení, aby Supervisor mohl nabídnout aktualizaci.
+
+Teprve po úspěšném dokončení všech vývojových obrazů zavolá workflow publikování nabídky Dev. Workflow **Vydání** aktualizuje stabilní nabídku po dokončení obrazů i příloh releasu. Společný workflow `ha-channel.yaml` generuje distribuované manifesty ze společné šablony a zapisuje je do `main` účtem `github-actions[bot]`. Používá `GITHUB_TOKEN` s oprávněním `contents: write`; nepotřebuje další tajný token. Pravidla větve musí tento zápis dovolovat. Pokud zápis selže, nabídka zůstane na předchozím sestavení a workflow hlásí chybu.
+
+Automatické commity obsahují `[skip ci]` a použitý `GITHUB_TOKEN` při pushi sám nespouští další workflow, takže nevzniká nekonečné sestavování. Po dokončení publikování před dalšími místními úpravami stáhněte automatický commit z Gitu.
+
+Starý vývojový běh nesmí aktualizovat nabídku, pokud `main` již obsahuje novější změny zdrojů. Opakovaný starší release ani starší dev sestavení nesmí nabídku vrátit zpět. Souběžné zápisy kanálů jsou serializované; při závodu s jiným pushem se zápis zkusí znovu bez force push.
+
+Soubory `home-assistant/ids_jmk/config.json` a `home-assistant/ids_jmk_dev/config.json` jsou distribuční výstupy, nikoli zdrojové nastavení. Dev manifest, překlad a changelog se vytvoří až po prvním úspěšném sestavení. Testy a CI používají zdrojovou šablonu `manifest.json`, takže mohou ověřit budoucí nastavení před jeho nabídnutím uživatelům. Obě varianty používají stejný runtime bez dalších balíčků; odlišují se manifestem a verzí obrazu.
 
 Před označením aplikace jako stabilní ověřte instalaci z tohoto repozitáře v HA OS, připojení integrace přes interní hostname z protokolu, změnu voleb, restart, aktualizaci a zálohu/obnovu. Na RPi změřte špičkovou RAM a místo při importu. CI testuje kontejner na obou architekturách, nikoli celý Supervisor.
 

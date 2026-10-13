@@ -1,0 +1,37 @@
+{
+  "name": "IDS JMK Parser",
+  "slug": "ids_jmk_parser",
+  "description": "Jízdní řády a realtime IDS JMK pro integraci Home Assistantu.",
+  "url": "https://github.com/CooLajz/IDS-JMK",
+  "arch": [
+    "aarch64",
+    "amd64"
+  ],
+  "image": "ghcr.io/coolajz/ids-jmk-ha",
+  "startup": "services",
+  "boot": "auto",
+  "init": true,
+  "stage": "experimental",
+  "backup": "cold",
+  "watchdog": "http://[HOST]:8080/health/live",
+  "ports": {
+    "8080/tcp": null
+  },
+  "ports_description": {
+    "8080/tcp": "Volitelný přístup k API z místní sítě"
+  },
+  "options": {
+    "realtime_enabled": false,
+    "gtfs_interval_seconds": 86400,
+    "realtime_interval_seconds": 60,
+    "realtime_max_age_seconds": 180,
+    "realtime_idle_timeout_seconds": 300
+  },
+  "schema": {
+    "realtime_enabled": "bool",
+    "gtfs_interval_seconds": "int(3600,)",
+    "realtime_interval_seconds": "int(15,)",
+    "realtime_max_age_seconds": "int(30,)",
+    "realtime_idle_timeout_seconds": "int(0,)"
+  }
+}

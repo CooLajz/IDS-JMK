@@ -7,11 +7,13 @@ permissions:
 jobs:
   validation:
     permissions:
-      contents: read
+      contents: write
       packages: write
     uses: ./.github/workflows/ci.yaml
   check:
     needs: validation
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +22,7 @@ jobs:
           python-version: '3.13'
       - run: uv sync --frozen && uv run pytest -q && uv run ruff check api custom_components tests scripts home-assistant
       - name: Ověření verze
+        id: version
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
@@ -35,7 +38,11 @@ jobs:
           from api.main import app
           assert app.version == version
           assert json.load(open('custom_components/ids_jmk/manifest.json'))['version'] == version
-          assert json.load(open('home-assistant/ids_jmk/config.json'))['version'] == version
+          from scripts.ha_channels import render
+          manifest = json.load(open('home-assistant/ids_jmk/manifest.json'))
+          assert render(manifest, 'stable', version)['version'] == version
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'version={version}\n')
           PY
   images:
     needs: check
@@ -106,3 +113,13 @@ jobs:
           else
             gh release create "$RELEASE_TAG" release/* --draft --verify-tag --generate-notes
           fi
+  ha-stable-channel:
+    name: Nabídka stabilní aplikace HA
+    needs: [release, check]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/ha-channel.yaml
+    with:
+      channel: stable
+      version: ${{ needs.check.outputs.version }}
+      source: ${{ github.sha }}

@@ -20,6 +20,8 @@ jobs:
       - run: uv sync --frozen
       - run: uv run ruff check api custom_components tests scripts home-assistant
       - run: uv run pytest -q
+      - name: Řazení vývojových verzí v Home Assistantu
+        run: uv run --with awesomeversion==25.8.0 python -m pytest tests/test_ha_channels.py -k supervisor_dev_version_order -q
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -84,7 +86,7 @@ jobs:
           mkdir -p /tmp/ids-ha-data
           python - <<'PYTEST'
           import json, pathlib
-          config = json.loads(pathlib.Path('home-assistant/ids_jmk/config.json').read_text())
+          config = json.loads(pathlib.Path('home-assistant/ids_jmk/manifest.json').read_text())
           pathlib.Path('/tmp/ids-ha-data/options.json').write_text(json.dumps(config['options']))
           PYTEST
           chmod 600 /tmp/ids-ha-data/options.json
@@ -102,9 +104,27 @@ jobs:
         run: docker logs --tail 100 ids-ha
       - if: always()
         run: docker rm -f ids-ha
+  dev-version:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - id: version
+        name: Jedinečná verze vývojového parseru
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          ha_version=$(python scripts/ha_channels.py dev-version --run-number "$RUN_NUMBER" --attempt "$RUN_ATTEMPT")
+          echo "version=$ha_version" >> "$GITHUB_OUTPUT"
   dev-images:
     name: Vývojový obraz (${{ matrix.component }})
-    needs: [test, home-assistant, hassfest, docker, ha-app]
+    needs: [test, home-assistant, hassfest, docker, ha-app, dev-version]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -132,15 +152,27 @@ jobs:
           tags: |
             type=raw,value=dev
             type=sha,prefix=dev-,format=long
+            type=raw,value=${{ needs.dev-version.outputs.version }},enable=${{ matrix.component == 'ha' }}
       - name: Sestavení a publikování vývojového obrazu
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.component == 'web' && './web' || '.' }}
           target: ${{ matrix.component == 'ha' && 'home-assistant' || '' }}
-          build-args: BUILD_VERSION=dev
+          build-args: BUILD_VERSION=${{ matrix.component == 'ha' && needs.dev-version.outputs.version || 'dev' }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=dev-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=dev-${{ matrix.component }}
+  ha-dev-channel:
+    name: Nabídka vývojové aplikace HA
+    needs: [dev-images, dev-version]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/ha-channel.yaml
+    with:
+      channel: dev
+      version: ${{ needs.dev-version.outputs.version }}
+      source: ${{ github.sha }}

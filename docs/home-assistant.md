@@ -24,7 +24,7 @@ Potřebujete **běžící parser/API**, **integraci IDS JMK** a **kartu v dashbo
 
 | Vaše instalace | Jak získáte parser |
 | --- | --- |
-| Home Assistant OS na ARM64 nebo AMD64 | Nainstalujte aplikaci **IDS JMK Parser** podle [návodu krok za krokem](../home-assistant/ids_jmk/DOCS.md). Aplikace je experimentální; ověření na skutečném HA OS zatím chybí. |
+| Home Assistant OS na ARM64 nebo AMD64 | Nainstalujte aplikaci **IDS JMK Parser** podle [návodu krok za krokem](../home-assistant/ids_jmk/DOCS.md). Pro běžný provoz vyberte **IDS JMK Parser**; pro testování je samostatná varianta **IDS JMK Parser (Dev)** s vlastními daty a aktualizacemi z větve `main`. |
 | Home Assistant Container nebo vlastní Docker server | Spusťte API podle [návodu pro Docker / Portainer](deployment.md). Obchod s aplikacemi HA OS zde není k dispozici. |
 | API už běží jinde v domácí síti | Připravte si jeho adresu včetně portu a pokračujte instalací integrace. |
 

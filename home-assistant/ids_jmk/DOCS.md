@@ -6,6 +6,14 @@ Aplikace vyžaduje Home Assistant OS na ARM64 nebo AMD64. Home Assistant Contain
 
 První vydání aplikace je **0.1.4**. HA stáhne předem sestavený obraz `ghcr.io/coolajz/ids-jmk-ha` s verzí uvedenou v konfiguraci aplikace. Označení experimentální zůstává do ověření v HA OS; kontejnery byly ověřeny v CI na ARM64 i AMD64.
 
+## Stabilní a vývojová varianta
+
+**IDS JMK Parser** nabízí číselná vydání po úspěšném sestavení releasu. **IDS JMK Parser (Dev)** nabízí samostatně instalovatelné vývojové sestavení po úspěšných kontrolách a publikování změn z větve `main`. Obě aplikace najdete ve stejném repozitáři; Dev se poprvé objeví až po prvním úspěšném sestavení s podporou kanálů.
+
+HA kontroluje aktualizace při obnově seznamu aplikací. V nastavení aplikace si můžete zapnout automatické aktualizace. Samotný push do Gitu nemění právě běžící kontejner.
+
+Varianty mají vlastní nastavení, data, identitu a adresu API. Přechod proto vyžaduje připojení integrace k nové instanci; data se automaticky nepřevádějí. Pro běžný provoz zvolte vydanou variantu a ponechte spuštěný jeden parser. [Postup pro Dev](https://github.com/CooLajz/IDS-JMK/blob/main/home-assistant/ids_jmk_dev/DOCS.md).
+
 ## Přidání repozitáře
 
 1. V **Nastavení → Aplikace → Obchod s aplikacemi → ⋮ → Repozitáře** přidejte `https://github.com/CooLajz/IDS-JMK`. Ve starších verzích HA se aplikace označují jako doplňky.

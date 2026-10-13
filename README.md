@@ -30,7 +30,7 @@ Pro běžné použití nepotřebujete programovat ani psát YAML. Nastavíte zdr
 
 **[Otevřít celý návod pro Home Assistant →](docs/home-assistant.md)**
 
-Parser můžete provozovat jako aplikaci přímo v **HA OS** nebo na vlastním Docker serveru. Aplikace HA OS je zatím experimentální; její instalace na skutečném HA OS není potvrzena. Integraci a karty přidáte samostatně přes vlastní repozitář HACS nebo ručně. Podrobně Vás provede uživatelský návod.
+Parser můžete provozovat jako aplikaci přímo v **HA OS** nebo na vlastním Docker serveru. Ve stejném repozitáři je vydaná varianta **IDS JMK Parser** a automaticky sestavovaná **IDS JMK Parser (Dev)**. Dev se v obchodě objeví po prvním úspěšném vývojovém sestavení s podporou kanálů. Instalace a běh verze 0.1.4 byly potvrzeny uživatelem na skutečném HA OS; záloha/obnova a nároky na RPi zatím nejsou ověřeny. Integraci a karty přidáte samostatně přes vlastní repozitář HACS nebo ručně. Podrobně Vás provede uživatelský návod.
 
 ## Pro vývojáře
 
