@@ -1,0 +1,23 @@
+{
+  "configuration": {
+    "realtime_enabled": {
+      "name": "Realtime data",
+      "description": "Zapněte stahování zpoždění, poloh vozidel a upozornění."
+    },
+    "gtfs_interval_seconds": {
+      "name": "Obnova jízdních řádů",
+      "description": "Zadejte interval v sekundách, nejméně 3600. Výchozí hodnota je 86400 (24 hodin)."
+    },
+    "realtime_interval_seconds": {
+      "name": "Obnova realtime dat",
+      "description": "Zadejte interval v sekundách, nejméně 15. Výchozí hodnota je 60."
+    },
+    "realtime_max_age_seconds": {
+      "name": "Maximální stáří realtime dat",
+      "description": "Zadejte limit v sekundách, nejméně 30. Výchozí hodnota je 180."
+    }
+  },
+  "network": {
+    "8080/tcp": "Volitelný port API pro přístup z místní sítě. Pro integraci na stejném HA jej ponechte vypnutý."
+  }
+}
