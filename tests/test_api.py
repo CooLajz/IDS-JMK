@@ -913,3 +913,38 @@ def test_restart_does_not_bypass_upstream_retry_after(tmp_path, monkeypatch):
         assert status['downloads']['realtime']['consecutive_errors'] == 1
         assert status['gtfs_error'] == status['realtime_error'] == 'HTTPStatusError'
         update.assert_not_called()
+
+
+@pytest.mark.parametrize('bad_timestamp', ['milliseconds', 'overflow', 'future'])
+def test_invalid_vehicle_timestamp_is_skipped_without_breaking_api(tmp_path, bad_timestamp):
+    import time
+
+    now = int(time.time())
+    values = {'milliseconds': now * 1000, 'overflow': 2**64 - 1, 'future': now + 120}
+    app = create_app(Settings(data_dir=tmp_path / 'app', download_enabled=False, realtime_enabled=True))
+    app.state.timetable.import_zip(archive(tmp_path / 'gtfs.zip'))
+    feed = pb.FeedMessage()
+    feed.header.gtfs_realtime_version = '2.0'
+    feed.header.timestamp = now
+    for name, trip_id, timestamp in [('bad', 'T', values[bad_timestamp]), ('good', 'N', now)]:
+        entity = feed.entity.add()
+        entity.id = name
+        entity.vehicle.trip.trip_id = trip_id
+        entity.vehicle.timestamp = timestamp
+        entity.vehicle.position.latitude = 49
+        entity.vehicle.position.longitude = 16
+    app.state.realtime.ingest(feed.SerializeToString())
+    with TestClient(app) as client:
+        response = client.get('/api/v1/vehicles')
+        assert response.status_code == 200
+        assert [v['id'] for v in response.json()['vehicles']] == ['good']
+    assert ('T', '') not in app.state.realtime.snapshot.vehicles
+
+
+def test_conflicting_vehicle_stop_cannot_produce_delay(timetable):
+    now = at('2026-10-11T14:03:00')
+    rt = Realtime()
+    rt.snapshot = vehicle_rt(now, stop='B')  # Sequence 1 is A, not B.
+    row = board(timetable, stop='B', now=now.isoformat(), rt=rt)[0]
+    assert row['source'] == 'schedule'
+    assert row['delay_seconds'] is None

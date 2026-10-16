@@ -41,7 +41,7 @@ jobs:
           python-version: '3.13'
       - run: uv venv /tmp/ha-tests
       - run: uv pip install --python /tmp/ha-tests/bin/python homeassistant==2025.12.5 pytest
-      - run: /tmp/ha-tests/bin/python -m pytest tests/test_ha_config_flow.py -q
+      - run: /tmp/ha-tests/bin/python -m pytest tests/test_ha_config_flow.py tests/test_ha_visibility.py -q
   hassfest:
     runs-on: ubuntu-latest
     steps:

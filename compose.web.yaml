@@ -1,6 +1,6 @@
 services:
   api:
-    image: ghcr.io/coolajz/ids-jmk-api:${IMAGE_TAG:-0.1.5}
+    image: ghcr.io/coolajz/ids-jmk-api:${IMAGE_TAG:-0.1.6}
     restart: unless-stopped
     ports:
       - "${BIND_IP:-127.0.0.1}:${API_PORT:-8080}:8080"
@@ -8,6 +8,7 @@ services:
       DATA_DIR: /data
       GTFS_INTERVAL_SECONDS: ${GTFS_INTERVAL_SECONDS:-86400}
       REALTIME_ENABLED: ${REALTIME_ENABLED:-false}
+      REALTIME_IDLE_TIMEOUT_SECONDS: ${REALTIME_IDLE_TIMEOUT_SECONDS:-300}
       REALTIME_INTERVAL_SECONDS: ${REALTIME_INTERVAL_SECONDS:-60}
       REALTIME_MAX_AGE_SECONDS: ${REALTIME_MAX_AGE_SECONDS:-180}
     volumes:
@@ -15,7 +16,7 @@ services:
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
   web:
-    image: ghcr.io/coolajz/ids-jmk-web:${IMAGE_TAG:-0.1.5}
+    image: ghcr.io/coolajz/ids-jmk-web:${IMAGE_TAG:-0.1.6}
     restart: unless-stopped
     depends_on: [api]
     ports:

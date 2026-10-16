@@ -61,6 +61,11 @@ class Realtime:
                 key = (v.trip.trip_id, v.trip.start_date)
                 if not key[0]:
                     continue
+                timestamp = v.timestamp or stamp
+                # Reject broken clocks (including milliseconds instead of seconds)
+                # before publishing or persisting a vehicle that cannot be serialized.
+                if timestamp > time.time() + 60:
+                    continue
                 position = None
                 if (
                     v.HasField("position")
@@ -73,7 +78,7 @@ class Realtime:
                     "label": v.vehicle.label,
                     "trip_id": key[0],
                     "start_date": key[1],
-                    "timestamp": v.timestamp or stamp,
+                    "timestamp": timestamp,
                     "stop_id": normalize_stop(v.stop_id),
                     "sequence": v.current_stop_sequence if v.HasField("current_stop_sequence") else None,
                     "status": v.current_status,
@@ -261,6 +266,8 @@ class Realtime:
             return {}  # Repeated stops require a stop_sequence to disambiguate.
         index = matches[0]
         current = stops[index]
+        if v["stop_id"] and current["normalized"] != v["stop_id"]:
+            return {}
         if row["seq"] < current["seq"]:
             return {}
         if v["status"] == pb.VehiclePosition.STOPPED_AT:

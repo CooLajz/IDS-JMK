@@ -240,7 +240,7 @@ async function refresh() {
         ? "Jízdní řád · realtime je na serveru vypnutý. U spoje můžete zobrazit trasu zastávek."
         : data.realtime_stale
         ? "Realtime údaje nejsou čerstvé. Odjezdy jsou podle jízdního řádu."
-        : "Živá tabule · obnova každých 30 sekund. Kliknutím na linku, směr nebo stanoviště nastavíte filtr, tlačítkem „Poloha“ otevřete mapu.",
+        : "Živá tabule · obnova každých 30 sekund. Kliknutím na linku, směr nebo stanoviště nastavíte filtr, tlačítkem „Trasa“ nebo „Poloha“ otevřete mapu.",
     );
   } catch (e) {
     if (seq === boardSequence) {
@@ -293,22 +293,20 @@ function renderBoard() {
     if (transport) route.querySelector("button")?.prepend(transport);
     const dest = cell("");
     filterLink(dest, "direction", d.destination, d.destination || "—", key);
-    if (d.has_vehicle_position || board.realtime_enabled === false) {
-      const position = document.createElement("button");
-      position.className = "position-link";
-      position.dataset.key = `${key}/map`;
-      const staticRoute = board.realtime_enabled === false;
-      position.title = staticRoute ? "Zobrazit trasu zastávek na mapě" : "Zobrazit aktuální polohu vozidla na mapě";
-      position.setAttribute(
-        "aria-label",
-        `${staticRoute ? "Trasa" : "Poloha vozidla"} linky ${d.line}, ${d.destination}`,
-      );
-      position.innerHTML =
-        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg> Poloha';
-      if (staticRoute) position.lastChild.textContent = " Trasa";
-      position.addEventListener("click", () => showTrip(d));
-      dest.append(position);
-    }
+    const position = document.createElement("button");
+    position.className = "position-link";
+    position.dataset.key = `${key}/map`;
+    const staticRoute = board.realtime_enabled === false || !d.has_vehicle_position;
+    position.title = staticRoute ? "Zobrazit trasu zastávek na mapě" : "Zobrazit aktuální polohu vozidla na mapě";
+    position.setAttribute(
+      "aria-label",
+      `${staticRoute ? "Trasa" : "Poloha vozidla"} linky ${d.line}, ${d.destination}`,
+    );
+    position.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg> Poloha';
+    if (staticRoute) position.lastChild.textContent = " Trasa";
+    position.addEventListener("click", () => showTrip(d));
+    dest.append(position);
     const pastLabel = document.createElement("small");
     pastLabel.className = "past-label";
     dest.append(pastLabel);
@@ -482,11 +480,12 @@ async function updateTrip() {
       $("detail-status").append(caption, updated);
     } else {
       $("detail-status").textContent = trip.realtime_enabled === false
-        ? "Trasa podle pořadí zastávek · realtime vypnutý" : "Poloha není dostupná";
+        ? "Trasa podle pořadí zastávek · realtime vypnutý"
+        : "Trasa podle pořadí zastávek · aktuální poloha není dostupná";
     }
     followedVehiclePosition = vehicles[0]?.position ?? null;
     $("map-controls").hidden = !vehicles.length;
-    const showRoute = trip.realtime_enabled === false && trip.stops.length > 0;
+    const showRoute = trip.stops.length > 0;
     $("map").hidden = !vehicles.length && !showRoute;
     if (vehicles.length || showRoute) {
       const firstMap = !map;

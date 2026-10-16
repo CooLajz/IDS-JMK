@@ -84,3 +84,30 @@ test('map pauses offscreen and in a hidden document, resumes once, and removes l
     document.dispatchEvent(new Event('visibilitychange'));assert.equal(active,false);
   } finally {globalThis.setInterval=oldSet;globalThis.clearInterval=oldClear;}
 });
+
+test('selected detail follows vehicle updates without refetching geometry, including an in-flight trip', async()=>{
+  globalThis.document={hidden:false};
+  const Card=elements.get('ids-jmk-map-card'),card=new Card();
+  Object.assign(card,{isConnected:true,visible:true,map:{},config:{entry_id:'demo',selections:[{route_id:'R',direction:'*'}]},status:{},detail:{},fitted:true,overview:true});
+  card.markers={clearLayers(){}};card.route={clearLayers(){}};
+  card.permanentStops={getLayers:()=>[]};card.loadStops=()=>{};card.fit=()=>{};
+  card.L={polyline:()=>({addTo(){}}),divIcon:()=>({}),marker:()=>({addTo(){return this;},on(){return this;}})};
+  const initial={id:'V',trip_id:'T',service_date:'2026-10-16',line:'1',destination:'C',updated_at:'2026-10-16T12:00:00+02:00',position:{lat:49,lon:16},current_stop:{delay_seconds:60}};
+  let current={...initial,current_stop:{delay_seconds:300,delay_source:'vehicle_estimate'},updated_at:'2026-10-16T12:01:00+02:00'};
+  let resolveTrip,tripCalls=0;
+  card.call=async action=>{
+    if(action==='trip'){tripCalls++;return new Promise(resolve=>{resolveTrip=resolve;});}
+    return {vehicles:[current],realtime_enabled:true};
+  };
+  const loading=card.showTrip(initial);
+  await card.refresh();
+  resolveTrip({stops:[]});await loading;
+  assert.match(card.detail.innerHTML,/Odhad zpoždění 5 min/);
+  current={...current,current_stop:{delay_seconds:120,delay_source:'trip_update'}};
+  await card.refresh();
+  assert.match(card.detail.innerHTML,/Zpoždění 2 min/);
+  assert.equal(tripCalls,1);
+  current={...current,service_date:'2026-10-17'};
+  await card.refresh();
+  assert.equal(card.selected,null);
+});
