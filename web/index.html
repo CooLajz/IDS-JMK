@@ -148,7 +148,7 @@
       </div>
       <p class="stats-intro">Kolik dat server stahuje a kolik požadavků obslouží. Dotazy našeho webu se do statistik API nezapočítávají.</p>
       <div class="stats-controls">
-        <div><label for="stats-period">Období</label><select id="stats-period"><option value="day">Den · po hodinách</option><option value="month">Měsíc · po dnech</option><option value="year">Rok · po měsících</option></select></div>
+        <div><label id="stats-period-label">Období</label><div id="stats-period" class="stats-segments" role="group" aria-labelledby="stats-period-label"><button type="button" data-period="day" aria-pressed="true">Den</button><button type="button" data-period="month" aria-pressed="false">Měsíc</button><button type="button" data-period="year" aria-pressed="false">Rok</button></div></div>
         <div><label for="stats-date">Datum v období</label><input id="stats-date" type="date" min="2000-01-01" max="2099-12-31"></div>
         <div><label for="stats-metric">Grafy stahování</label><select id="stats-metric"><option value="counts">Dotazy a stažení</option><option value="bytes">Přenesená data</option></select></div>
       </div>

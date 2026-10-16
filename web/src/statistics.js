@@ -37,6 +37,7 @@ export function setupStatistics() {
   const metric = document.getElementById("stats-metric");
   const content = document.getElementById("stats-content");
   const notice = document.getElementById("stats-notice");
+  let selectedPeriod = "day";
   let data,
     sequence = 0,
     loading = false;
@@ -92,6 +93,8 @@ export function setupStatistics() {
       ),
     );
     const scrollTop = dialog.scrollTop;
+    const focusedBin = content.contains(document.activeElement)
+      ? document.activeElement.dataset.bin : null;
     content.replaceChildren();
     const start = new Date(data.start);
     const range = start.toLocaleDateString("cs-CZ", {
@@ -197,15 +200,50 @@ export function setupStatistics() {
       );
       const chart = el("div", undefined, "stats-chart");
       chart.style.setProperty("--bins", data.series.length);
-      chart.setAttribute("role", "img");
+      chart.setAttribute("role", "group");
       chart.setAttribute(
         "aria-label",
         `${sourceNames[source]}: sloupcový graf. Přesné hodnoty jsou v tabulce pod grafem.`,
       );
-      for (const row of data.series) {
+      const readout = el("div", undefined, "stats-readout");
+      const readoutTitle = el("strong", "Detail období");
+      const readoutValues = el("span", "Najeďte na graf nebo vyberte sloupec.");
+      readout.append(readoutTitle, readoutValues);
+      panel.append(readout);
+      let activeGroup;
+      const selectBin = (group, row) => {
+        activeGroup?.classList.remove("is-active");
+        activeGroup = group;
+        group.classList.add("is-active");
+        readoutTitle.textContent = data.period === "day" ? row.label
+          : data.period === "month" ? `${row.label}. den` : `${row.label}. měsíc`;
+        readoutValues.replaceChildren(...chartFields.map(([key, label]) =>
+          el("span", `${label}: ${transfer ? bytes(row[source][key]) : number(row[source][key])}`)));
+      };
+      for (const [index, row] of data.series.entries()) {
         const group = el("div", undefined, "stats-bin");
         const bars = el("div", undefined, "stats-bars");
-        group.title = `${row.label}: ${chartFields.map(([key, label]) => `${label} ${transfer ? bytes(row[source][key]) : number(row[source][key])}`).join(", ")}`;
+        group.tabIndex = index === 0 ? 0 : -1;
+        group.dataset.bin = `${source}-${index}`;
+        group.setAttribute("role", "button");
+        const description = `${row.label}: ${chartFields.map(([key, label]) => `${label} ${transfer ? bytes(row[source][key]) : number(row[source][key])}`).join(", ")}`;
+        group.setAttribute("aria-label", description);
+        group.addEventListener("pointerenter", () => selectBin(group, row));
+        group.addEventListener("click", () => selectBin(group, row));
+        group.addEventListener("focus", () => selectBin(group, row));
+        group.addEventListener("keydown", (event) => {
+          const offsets = { ArrowRight: 1, ArrowLeft: -1, Home: -index, End: data.series.length - 1 - index };
+          if (event.key in offsets) {
+            event.preventDefault();
+            const target = chart.children[Math.max(0, Math.min(data.series.length - 1, index + offsets[event.key]))];
+            group.tabIndex = -1;
+            target.tabIndex = 0;
+            target.focus();
+          } else if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            selectBin(group, row);
+          }
+        });
         for (let i = 0; i < chartFields.length; i++) {
           const bar = el("span", undefined, `stats-bar series-${i}`);
           bar.style.height = `${(row[source][chartFields[i][0]] / max) * 100}%`;
@@ -289,16 +327,24 @@ export function setupStatistics() {
       details.append(list);
       content.append(details);
     }
+    if (focusedBin) {
+      const target = [...content.querySelectorAll("[data-bin]")].find(node => node.dataset.bin === focusedBin);
+      target?.focus({ preventScroll: true });
+    }
     dialog.scrollTop = scrollTop;
   }
   async function load() {
+    if (!date.value || !date.validity.valid) {
+      notice.textContent = "Vyberte platné datum v rozmezí let 2000 až 2099.";
+      return;
+    }
     const current = ++sequence;
     loading = true;
     notice.textContent = "Načítání statistik…";
     content.setAttribute("aria-busy", "true");
     try {
       const response = await fetch(
-        `/api/v1/statistics?${new URLSearchParams({ period: period.value, date: date.value })}`,
+        `/api/v1/statistics?${new URLSearchParams({ period: selectedPeriod, date: date.value })}`,
         { headers, cache: "no-store", signal: AbortSignal.timeout(15000) },
       );
       if (!response.ok)
@@ -314,9 +360,7 @@ export function setupStatistics() {
       notice.textContent = "";
     } catch (error) {
       if (current === sequence) {
-        data = null;
-        notice.textContent = error.message;
-        content.replaceChildren();
+        notice.textContent = `${error.message}${data ? " Zobrazeny jsou poslední načtené údaje." : ""}`;
       }
     } finally {
       if (current === sequence) {
@@ -328,9 +372,9 @@ export function setupStatistics() {
   function move(delta) {
     const selected = new Date(`${date.value}T12:00:00Z`);
     if (!Number.isFinite(selected.getTime())) return;
-    if (period.value === "day")
+    if (selectedPeriod === "day")
       selected.setUTCDate(selected.getUTCDate() + delta);
-    else if (period.value === "month") {
+    else if (selectedPeriod === "month") {
       selected.setUTCDate(1);
       selected.setUTCMonth(selected.getUTCMonth() + delta);
     } else {
@@ -354,7 +398,14 @@ export function setupStatistics() {
   document
     .getElementById("stats-next")
     .addEventListener("click", () => move(1));
-  period.addEventListener("change", load);
+  period.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-period]");
+    if (!button || button.dataset.period === selectedPeriod) return;
+    selectedPeriod = button.dataset.period;
+    for (const item of period.querySelectorAll("button"))
+      item.setAttribute("aria-pressed", String(item === button));
+    load();
+  });
   date.addEventListener("change", load);
   metric.addEventListener("change", render);
   dialog.addEventListener("close", () => {
