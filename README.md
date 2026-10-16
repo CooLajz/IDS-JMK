@@ -50,7 +50,7 @@ API vrací JSON pro odjezdové tabule, polohy, upozornění a statistiky. Web i 
 
 **[Otevřít vývojářský průvodce →](docs/development.md)**
 
-Aktuální verze v repozitáři je **0.1.5**. Balíčky integrace a instalační Compose soubory najdete ve [vydáních na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API, webu a parseru pro HA se sestavují pro Linux AMD64 a ARM64.
+Aktuální verze v repozitáři je **0.1.6**. Balíčky integrace a instalační Compose soubory najdete ve [vydáních na GitHubu](https://github.com/CooLajz/IDS-JMK/releases). Obrazy API, webu a parseru pro HA se sestavují pro Linux AMD64 a ARM64.
 
 ## Jak spolu součásti fungují
 

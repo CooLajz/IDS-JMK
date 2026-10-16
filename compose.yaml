@@ -1,6 +1,6 @@
 services:
   api:
-    image: ghcr.io/coolajz/ids-jmk-api:${IMAGE_TAG:-0.1.5}
+    image: ghcr.io/coolajz/ids-jmk-api:${IMAGE_TAG:-0.1.6}
     restart: unless-stopped
     ports:
       - "${BIND_IP:-127.0.0.1}:${API_PORT:-8080}:8080"

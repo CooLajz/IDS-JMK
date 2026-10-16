@@ -362,14 +362,16 @@ class MapCard extends HTMLElement {
           .addTo(this.markers)
           .on("click", () => this.showTrip(v));
       }
-      if (
-        this.selected &&
-        !vehicles.some(
-          (v) =>
-            v.id === this.selected.id && v.trip_id === this.selected.trip_id,
-        )
-      ) {
-        this.closeDetail();
+      if (this.selected) {
+        const current = vehicles.find((v) => v.id === this.selected.id &&
+          v.trip_id === this.selected.trip_id && v.service_date === this.selected.service_date);
+        if (current) {
+          // Preserve identity while a geometry request is still in flight.
+          Object.assign(this.selected, current);
+          if (this.selectedStops) this.renderTripDetail(this.selected, this.selectedStops);
+        } else {
+          this.closeDetail();
+        }
       }
       if (
         (this.overview || !this.fitted) &&
@@ -392,6 +394,7 @@ class MapCard extends HTMLElement {
   }
   async showTrip(vehicle) {
     this.selected = vehicle;
+    this.selectedStops = null;
     this.route.clearLayers();
     this.detail.textContent = `Linka ${vehicle.line} → ${vehicle.destination} · Načítání zastávek…`;
     const generation = this.generation;
@@ -425,12 +428,17 @@ class MapCard extends HTMLElement {
           maxZoom: 14,
           animate: false,
         });
-      const delay = vehicle.current_stop?.delay_seconds;
-      this.detail.innerHTML = `<strong>${esc(vehicle.line)} → ${esc(vehicle.destination)}</strong><br>Vozidlo ${esc(vehicle.label || vehicle.id)} · Poloha ${esc(new Date(vehicle.updated_at).toLocaleTimeString("cs-CZ"))}${delay != null ? ` · Zpoždění ${Math.round(delay / 60)} min` : ""}<br>Orientační spojnice zastávek, nikoli přesný průběh trasy.<ol>${stops.map((s) => `<li>${esc(s.name)}</li>`).join("")}</ol>`;
+      this.selectedStops = stops;
+      this.renderTripDetail(vehicle, stops);
     } catch {
       if (this.selected === vehicle && generation === this.generation)
         this.detail.textContent = "Detail spoje není dostupný.";
     }
+  }
+  renderTripDetail(vehicle, stops) {
+    const delay = vehicle.current_stop?.delay_seconds;
+    const label = vehicle.current_stop?.delay_source === "vehicle_estimate" ? "Odhad zpoždění" : "Zpoždění";
+    this.detail.innerHTML = `<strong>${esc(vehicle.line)} → ${esc(vehicle.destination)}</strong><br>Vozidlo ${esc(vehicle.label || vehicle.id)} · Poloha ${esc(new Date(vehicle.updated_at).toLocaleTimeString("cs-CZ"))}${delay != null ? ` · ${label} ${Math.round(delay / 60)} min` : ""}<br>Orientační spojnice zastávek, nikoli přesný průběh trasy.<ol>${stops.map((s) => `<li>${esc(s.name)}</li>`).join("")}</ol>`;
   }
 }
 class MapEditor extends HTMLElement {
