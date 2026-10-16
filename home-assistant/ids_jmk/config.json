@@ -1,6 +1,5 @@
 {
   "name": "IDS JMK Parser",
-  "version": "0.1.5",
   "slug": "ids_jmk_parser",
   "description": "Jízdní řády a realtime IDS JMK pro integraci Home Assistantu.",
   "url": "https://github.com/CooLajz/IDS-JMK",
@@ -34,5 +33,6 @@
     "realtime_interval_seconds": "int(15,)",
     "realtime_max_age_seconds": "int(30,)",
     "realtime_idle_timeout_seconds": "int(0,)"
-  }
+  },
+  "version": "0.1.6"
 }
