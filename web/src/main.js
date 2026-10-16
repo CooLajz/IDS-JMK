@@ -262,7 +262,7 @@ async function refresh() {
   }
 }
 function renderBoard() {
-  renderAlerts($("alerts"), board);
+  renderAlerts($("alerts"), board, boardPath());
   const focused = document.activeElement.closest?.("#departures button");
   const focusKey = focused?.dataset.key;
   $("departures").replaceChildren();
